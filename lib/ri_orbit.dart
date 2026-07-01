@@ -3,6 +3,9 @@
 export 'src/wave/resonon.dart';
 export 'src/wave/orbit_clock.dart';
 export 'src/coherence/resonon_cluster.dart';
+export 'src/coherence/conservation_relation.dart';
+export 'src/coherence/formal_invariance_layer.dart';
+export 'src/coherence/memory_state.dart';
 export 'src/resonance/field_state.dart';
 export 'src/resonance/resonance_engine.dart';
 export 'src/observability/field_observer.dart'; // WICHTIG!

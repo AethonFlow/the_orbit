@@ -34,4 +34,22 @@ class Resonon {
   double evaluate(double theta) {
     return amplitude * math.cos(frequency * theta + phase);
   }
+
+  /// Erzeugt eine neue Resonanz mit modifizierter Amplitude/Phase.
+  /// Identität (id, frequency, source, timestamp, metadata) bleibt erhalten -
+  /// nur die schnelle Dynamik (Zerfall, Phasendrift) verändert sich pro Tick.
+  Resonon copyWith({
+    double? amplitude,
+    double? phase,
+  }) {
+    return Resonon(
+      id: id,
+      timestamp: timestamp,
+      frequency: frequency,
+      amplitude: amplitude ?? this.amplitude,
+      phase: phase ?? this.phase,
+      source: source,
+      metadata: metadata,
+    );
+  }
 }
