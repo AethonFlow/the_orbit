@@ -6,3 +6,4 @@ build/
 *.code-workspace
 .DS_Store
 Thumbs.db
+pubspec.lock

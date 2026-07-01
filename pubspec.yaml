@@ -7,7 +7,7 @@ environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
-  # Reine Mathematik - Keine externen Frameworks/Flutter-Abhängigkeiten im Core!
+  # Pure mathematics - no external frameworks!
 
 dev_dependencies:
   test: ^1.24.0
