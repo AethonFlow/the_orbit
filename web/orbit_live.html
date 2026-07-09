@@ -105,7 +105,9 @@ const dot = document.getElementById('dot');
 const statusEl = document.getElementById('status');
 let ws;
 function connect() {
-  ws = new WebSocket(`ws://${location.host}/ws`);
+  // wss hinter https (z.B. Cloudflare Tunnel), ws lokal.
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
   ws.onopen = () => { dot.classList.add('on'); statusEl.textContent = 'verbunden mit der Engine'; };
   ws.onclose = () => { dot.classList.remove('on'); statusEl.textContent = 'getrennt — Server läuft?'; setTimeout(connect, 1500); };
   ws.onmessage = (e) => {
