@@ -20,16 +20,35 @@ typedef RadianceRay = ({FieldPoint origin, FieldPoint direction});
 /// nicht-invasiv und vollständig austauschbar (andere Kerne G, andere
 /// Schalengeometrien erzeugen andere Kaustiken, ohne den Kern zu berühren).
 ///
-/// Geometrie (V0.1): Parallele Beobachtungsstrahlen entlang -x treffen die
-/// kreisförmige Resonanzschale (Radius R) und werden nach dem
-/// Reflexionsgesetz gespiegelt - der Householder-Operator
+/// Geometrie (V0.2): Parallele Beobachtungsstrahlen entlang -x treffen die
+/// Resonanzschale und werden nach dem Reflexionsgesetz gespiegelt - der
+/// Householder-Operator
 ///
 ///     u = d - 2(d·n)n
 ///
 /// an seinem architektonisch richtigen Ort: als Grenzflächen-Geometrie der
-/// Beobachtung, normerhaltend, matrixfrei (Rang-1). Die Einhüllende der
-/// reflektierten Strahlen ist die Nephroiden-Kaustik mit Cusp bei (-R/2, 0);
-/// die Singularitätsbedingung det ∂Φ/∂(φ,s) = 0 liefert s*(φ) = -R·cosφ/2.
+/// Beobachtung, normerhaltend, matrixfrei (Rang-1).
+///
+/// Die Schale selbst ist keine starre Kreislinie mehr, sondern trägt die
+/// 8-Häuser-Geometrie (Architektur-Review V1.0: die Häuser als Organe des
+/// Feldes): eine polare Kurve
+///
+///     ρ(φ) = R · (1 + Σ_k c_k · exp(κ·(cos(φ - φ_k) - 1))),   φ_k = 2πk/8
+///
+/// mit acht lokalen, glatten von-Mises-Ausbuchtungen. c_k = 0 überall ergibt
+/// exakt den Kreis - und damit die klassische Nephroiden-Kaustik mit Cusp
+/// bei (-R/2, 0), wo die Singularitätsbedingung det ∂Φ/∂(φ,s) = 0 analytisch
+/// s*(φ) = -R·cosφ/2 liefert. Für gekrümmte Schalen liefert dieselbe
+/// Bedingung den numerischen Kaustik-Punkt: da Φ(φ,s) = P(φ) + s·u(φ) affin
+/// in s ist, ist die Determinante LINEAR in s - eine Division pro Strahl,
+/// matrixfrei, O(1):
+///
+///     s*(φ) = -(P'×u) / (u'×u)
+///
+/// Kaustiken verschieben sich stetig mit der Krümmung, reorganisieren sich
+/// aber nur an Bifurkationsschwellen (Katastrophentheorie, INPUT_002 Punkt 6)
+/// - der Stabilitätsgradient von FieldObserver.detectEvent() ist der Sensor,
+/// der diese Resonanzsprünge sehen wird.
 ///
 /// Zentrale Observable-Identität (einbandig, exakt):
 ///
@@ -40,7 +59,10 @@ typedef RadianceRay = ({FieldPoint origin, FieldPoint direction});
 /// vollständig (destruktive Auslöschung: viele inkohärente Quellen,
 /// keine Erkenntnis). Die FORM der Kaustik kommt allein aus der Geometrie.
 class RadianceProjection {
-  /// Radius R der reflektierenden Resonanzschale.
+  /// Anzahl der Häuser auf der Schale (Naturkonstante der Zielkarte).
+  static const int houseCount = 8;
+
+  /// Radius R der ungekrümmten Resonanzschale.
   final double shellRadius;
 
   /// Breite σ des transversalen Gauß-Kerns G_k (räumliche Auflösung).
@@ -49,11 +71,84 @@ class RadianceProjection {
   /// Anzahl M der Abtaststrahlen auf S¹.
   final int rayCount;
 
+  /// Krümmungsgewichte c_k der acht Häuser (Haus k zentriert bei φ_k = 2πk/8).
+  /// Alle null (Default): die Schale ist der Kreis, die Kaustik die Nephroide.
+  final List<double> houseCurvatures;
+
+  /// Konzentration κ der von-Mises-Ausbuchtungen: bestimmt, wie lokal ein
+  /// Haus die Schale krümmt (κ = 10 → Halbwertsbreite ≈ ein Haus-Sektor).
+  final double houseConcentration;
+
   const RadianceProjection({
     this.shellRadius = 1.0,
     this.kernelWidth = 0.06,
     this.rayCount = 64,
-  });
+    this.houseCurvatures = const [0, 0, 0, 0, 0, 0, 0, 0],
+    this.houseConcentration = 10.0,
+  }) : assert(houseCurvatures.length == houseCount);
+
+  /// Leitet die Haus-Krümmungen nicht-invasiv aus dem Feld ab: Frequenzband
+  /// f nährt Haus (f-1) mod 8 mit seinem Substanz-Anteil. Die Organe atmen
+  /// mit dem Feld - Geometrie und Dynamik sind ko-emergent, ohne dass die
+  /// Kern-Physik von der Schale weiß (reine Leseoperation, ADR_001).
+  static List<double> houseCurvaturesFromCluster(ResononCluster cluster,
+      {double scale = 0.15}) {
+    final curvatures = List<double>.filled(houseCount, 0.0);
+    final total = cluster.substance();
+    if (total <= 1e-12) return curvatures;
+    for (final w in cluster.waves) {
+      final house = (w.frequency - 1) % houseCount;
+      curvatures[house] += scale * (w.amplitude * w.amplitude) / total;
+    }
+    return curvatures;
+  }
+
+  /// Der Schalenradius ρ(φ) = R·(1 + Σ_k c_k·exp(κ(cos(φ-φ_k)-1))).
+  double radiusAt(double phi) {
+    double bump = 0.0;
+    for (int k = 0; k < houseCount; k++) {
+      final c = houseCurvatures[k];
+      if (c == 0.0) continue;
+      final delta = phi - 2 * math.pi * k / houseCount;
+      bump += c * math.exp(houseConcentration * (math.cos(delta) - 1));
+    }
+    return shellRadius * (1 + bump);
+  }
+
+  /// Analytische Ableitung dρ/dφ (matrixfrei, kein Differenzenquotient).
+  double radiusDerivativeAt(double phi) {
+    double d = 0.0;
+    for (int k = 0; k < houseCount; k++) {
+      final c = houseCurvatures[k];
+      if (c == 0.0) continue;
+      final delta = phi - 2 * math.pi * k / houseCount;
+      d += c *
+          houseConcentration *
+          -math.sin(delta) *
+          math.exp(houseConcentration * (math.cos(delta) - 1));
+    }
+    return shellRadius * d;
+  }
+
+  /// Randpunkt P(φ) = ρ(φ)·(cosφ, sinφ) der Schale.
+  FieldPoint boundaryPoint(double phi) {
+    final rho = radiusAt(phi);
+    return (x: rho * math.cos(phi), y: rho * math.sin(phi));
+  }
+
+  /// Die echte äußere Einheitsnormale der Kurve ρ(φ). Für den Kreis (ρ'=0)
+  /// fällt sie auf die radiale Richtung (cosφ, sinφ) zurück.
+  FieldPoint outwardNormalAt(double phi) {
+    final rho = radiusAt(phi);
+    final dRho = radiusDerivativeAt(phi);
+    final c = math.cos(phi);
+    final s = math.sin(phi);
+    // Tangente T = P'(φ), Normale = T um -90° gedreht (zeigt nach außen).
+    final nx = rho * c + dRho * s;
+    final ny = rho * s - dRho * c;
+    final norm = math.sqrt(nx * nx + ny * ny);
+    return (x: nx / norm, y: ny / norm);
+  }
 
   /// Householder-Reflexion u = d - 2(d·n)n. Normerhaltend und involutiv.
   FieldPoint reflect(FieldPoint d, FieldPoint n) {
@@ -62,19 +157,56 @@ class RadianceProjection {
   }
 
   /// Der Beobachtungsstrahl zum Randwinkel φ: einfallende Richtung (-1, 0),
-  /// reflektiert an der Schalennormalen (cosφ, sinφ).
+  /// reflektiert an der echten Kurvennormalen der (ggf. gekrümmten) Schale.
   RadianceRay ray(double phi) {
-    final n = (x: math.cos(phi), y: math.sin(phi));
-    final u = reflect((x: -1.0, y: 0.0), n);
-    return (origin: (x: shellRadius * n.x, y: shellRadius * n.y), direction: u);
+    final u = reflect((x: -1.0, y: 0.0), outwardNormalAt(phi));
+    return (origin: boundaryPoint(phi), direction: u);
   }
 
-  /// Analytischer Kaustik-Punkt zum Randwinkel φ (Referenz/Erwartung):
-  /// p*(φ) = Φ(φ, s*) mit s*(φ) = -R·cosφ/2 aus det ∂Φ/∂(φ,s) = 0.
-  /// Physikalisch nur für die beleuchtete Innenwand (cosφ < 0) definiert.
+  /// Analytischer Kaustik-Punkt der UNGEKRÜMMTEN Schale (Nephroiden-
+  /// Referenz): p*(φ) = Φ(φ, s*) mit s*(φ) = -R·cosφ/2 aus
+  /// det ∂Φ/∂(φ,s) = 0. Physikalisch nur für die beleuchtete Innenwand
+  /// (cosφ < 0) definiert. Für gekrümmte Schalen: [numericalCausticPoint].
   FieldPoint causticPoint(double phi) {
     final r = ray(phi);
     final s = -shellRadius * math.cos(phi) / 2;
+    return (
+      x: r.origin.x + s * r.direction.x,
+      y: r.origin.y + s * r.direction.y,
+    );
+  }
+
+  /// Numerischer Kaustik-Punkt für beliebige Schalengeometrie.
+  ///
+  /// Φ(φ,s) = P(φ) + s·u(φ) ist affin in s, also ist
+  /// det ∂Φ/∂(φ,s) = P'×u + s·(u'×u) LINEAR in s: die Singularität liegt
+  /// exakt bei s* = -(P'×u)/(u'×u). P' analytisch, u' als zentraler
+  /// Differenzenquotient - eine Division pro Strahl, O(1), matrixfrei.
+  /// Im Grenzfall c_k = 0 reproduziert dies die Nephroide von
+  /// [causticPoint] (Invarianten-Test).
+  FieldPoint numericalCausticPoint(double phi, {double h = 1e-5}) {
+    final r = ray(phi);
+
+    // P'(φ) analytisch aus ρ und ρ'.
+    final rho = radiusAt(phi);
+    final dRho = radiusDerivativeAt(phi);
+    final c = math.cos(phi);
+    final sn = math.sin(phi);
+    final pPrime = (x: dRho * c - rho * sn, y: dRho * sn + rho * c);
+
+    // u'(φ) zentral differenziert.
+    final uPlus = ray(phi + h).direction;
+    final uMinus = ray(phi - h).direction;
+    final uPrime = (x: (uPlus.x - uMinus.x) / (2 * h),
+        y: (uPlus.y - uMinus.y) / (2 * h));
+
+    double cross(FieldPoint a, FieldPoint b) => a.x * b.y - a.y * b.x;
+    final denominator = cross(uPrime, r.direction);
+    if (denominator.abs() < 1e-12) {
+      // Entarteter Strahl (keine Fokussierung): kein Kaustik-Punkt.
+      return r.origin;
+    }
+    final s = -cross(pPrime, r.direction) / denominator;
     return (
       x: r.origin.x + s * r.direction.x,
       y: r.origin.y + s * r.direction.y,
@@ -128,18 +260,27 @@ class RadianceProjection {
     return totalRe * totalRe + totalIm * totalIm;
   }
 
-  /// Tastet I(p) auf einem quadratischen Gitter [-R, R]² ab (row-major).
-  /// Punkte außerhalb der Schale werden nicht ausgewertet (Intensität 0).
+
+  /// Tastet I(p) auf einem quadratischen Gitter [-R_max, R_max]² ab
+  /// (row-major). Punkte außerhalb der (ggf. gekrümmten) Schale werden
+  /// nicht ausgewertet (Intensität 0).
   List<double> intensityGrid(ResononCluster cluster, {required int gridSize}) {
     final values = List<double>.filled(gridSize * gridSize, 0.0);
-    final rSq = shellRadius * shellRadius * 0.98;
+
+    double maxRadius = shellRadius;
+    for (int k = 0; k < rayCount; k++) {
+      final rho = radiusAt(2 * math.pi * k / rayCount);
+      if (rho > maxRadius) maxRadius = rho;
+    }
+
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
         final p = (
-          x: -shellRadius + 2 * shellRadius * i / (gridSize - 1),
-          y: -shellRadius + 2 * shellRadius * j / (gridSize - 1),
+          x: -maxRadius + 2 * maxRadius * i / (gridSize - 1),
+          y: -maxRadius + 2 * maxRadius * j / (gridSize - 1),
         );
-        if (p.x * p.x + p.y * p.y > rSq) continue;
+        final rho = radiusAt(math.atan2(p.y, p.x));
+        if (p.x * p.x + p.y * p.y > rho * rho * 0.98) continue;
         values[i * gridSize + j] = intensityAt(cluster, p);
       }
     }

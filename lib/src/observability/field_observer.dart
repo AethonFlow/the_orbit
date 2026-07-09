@@ -33,8 +33,9 @@ class FieldObserver {
 
   /// Tastet das Feld holografisch an [resolution] Punkten ab. Jeder Punkt
   /// trägt dieselbe globale Signatur - eine echte Hologramm-Eigenschaft:
-  /// jeder Teil (jedes "Haus") enthält das Ganze. Positionsabhängige
-  /// Projektion (8-Häuser-Geometrie) ist der nächste Ausbauschritt.
+  /// jeder Teil (jedes "Haus") enthält das Ganze. Die positionsabhängige
+  /// Projektion (8-Häuser-Geometrie) lebt in RadianceProjection:
+  /// dort krümmen die Häuser die Schale, und I(p) löst den Raum auf.
   List<RadiancePoint> observeRadiance(FieldState state,
       {required int resolution}) {
     final meta = state.invarianceMeta;

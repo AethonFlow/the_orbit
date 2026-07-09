@@ -133,31 +133,42 @@ void main() {
     test('Bänder bleiben orthogonal: verschiedene Frequenzen koppeln nicht',
         () {
       // Jede Welle allein in ihrem Band: r_Band = 1, ψ_Band = eigene Phase,
-      // die Kopplungskraft ist exakt null - Phasen bleiben eingefroren.
-      var field = const ResononCluster()
-          .withResonon(Resonon(
-              id: 1,
-              timestamp: DateTime.now(),
-              frequency: 2,
-              amplitude: 1.0,
-              phase: 0.5,
-              source: ResononSource.mouse))
-          .withResonon(Resonon(
-              id: 2,
-              timestamp: DateTime.now(),
-              frequency: 5,
-              amplitude: 1.0,
-              phase: 1.7,
-              source: ResononSource.mouse));
+      // die Kopplungskraft ist exakt null. Seit V0.3 rotieren die Phasen
+      // frei mit ωᵢ = fᵢ·ω₀ - aber deterministisch und band-lokal: die
+      // Trajektorie jeder Welle ist EXAKT dieselbe, ob das andere Band
+      // existiert oder nicht (das ist die ehrliche Orthogonalitäts-Aussage).
+      final w1 = Resonon(
+          id: 1,
+          timestamp: DateTime.now(),
+          frequency: 2,
+          amplitude: 1.0,
+          phase: 0.5,
+          source: ResononSource.mouse);
+      final w2 = Resonon(
+          id: 2,
+          timestamp: DateTime.now(),
+          frequency: 5,
+          amplitude: 1.0,
+          phase: 1.7,
+          source: ResononSource.mouse);
+
+      var joint = const ResononCluster().withResonon(w1).withResonon(w2);
+      var solo = const ResononCluster().withResonon(w1);
 
       for (int i = 0; i < 10; i++) {
         final tick = OrbitTick(
             sequenceNumber: i, timestamp: DateTime.now(), deltaTime: 0.1);
-        field = field.tick(tick);
+        joint = joint.tick(tick);
+        solo = solo.tick(tick);
+        expect(joint.waves[0].phase, equals(solo.waves[0].phase));
       }
 
-      expect(field.waves[0].phase, closeTo(0.5, 1e-9));
-      expect(field.waves[1].phase, closeTo(1.7, 1e-9));
+      // Freie Eigenrotation: θ(t) = θ₀ + f·ω₀·t (mod 2π), t = 10·0.1 = 1.
+      const omega0 = ResononCluster.naturalFrequencyBase;
+      expect(joint.waves[0].phase,
+          closeTo((0.5 + 2 * omega0 * 1.0) % (2 * math.pi), 1e-9));
+      expect(joint.waves[1].phase,
+          closeTo((1.7 + 5 * omega0 * 1.0) % (2 * math.pi), 1e-9));
     });
 
     test('Die Reihenfolge des Hinzufügens darf das Endergebnis nicht verändern',
@@ -302,7 +313,9 @@ void main() {
       for (var point in topology) {
         expect(point.coherence, equals(stateNew.globalCoherence));
         expect(point.fieldSignature, equals(masterSignature));
-        expect(point.phase, equals(0.0));
+        // Ein Tick Eigenrotation (V0.3): ψ = θ₀ + f·ω₀·dt = 0 + 2·ω₀·0.1.
+        expect(point.phase,
+            closeTo(2 * ResononCluster.naturalFrequencyBase * 0.1, 1e-9));
       }
 
       final event = observer.detectEvent(stateOld, stateNew, tick);
@@ -500,6 +513,181 @@ void main() {
       for (int i = 0; i < cluster.waves.length; i++) {
         expect(cluster.waves[i].phase, equals(phasesBefore[i]));
       }
+    });
+  });
+
+  group('Gekrümmte Schale - 8 Häuser & Eigenrotation (Noesis Protocol III)',
+      () {
+    test(
+        'Nephroiden-Grenzfall: numerische Kaustik trifft die analytische exakt',
+        () {
+      // c_k = 0: die lineare det-Bedingung s* = -(P'×u)/(u'×u) muss die
+      // geschlossene Lösung s* = -R·cosφ/2 reproduzieren - auf der ganzen
+      // beleuchteten Innenwand.
+      const flat = RadianceProjection();
+      for (final phi in [2.0, 2.5, math.pi, 3.7, 4.2]) {
+        final numeric = flat.numericalCausticPoint(phi);
+        final analytic = flat.causticPoint(phi);
+        expect(numeric.x, closeTo(analytic.x, 1e-6));
+        expect(numeric.y, closeTo(analytic.y, 1e-6));
+      }
+    });
+
+    test('Ein Haus krümmt die Schale lokal - die Ferne bleibt Kreis', () {
+      const curved = RadianceProjection(
+          houseCurvatures: [0.2, 0, 0, 0, 0, 0, 0, 0]); // Haus 0 bei φ=0
+      expect(curved.radiusAt(0.0), closeTo(1.2, 1e-9)); // Bump-Spitze
+      expect(curved.radiusAt(math.pi), closeTo(1.0, 1e-6)); // e^(-2κ) ≈ 0
+
+      // Die Kurvennormale bleibt überall ein Einheitsvektor.
+      for (final phi in [0.0, 0.3, 1.0, math.pi, 4.5]) {
+        final n = curved.outwardNormalAt(phi);
+        expect(n.x * n.x + n.y * n.y, closeTo(1.0, 1e-12));
+      }
+    });
+
+    test('Stetigkeit: kleine Krümmung verschiebt die Kaustik nur wenig', () {
+      // Katastrophentheorie (INPUT_002, Punkt 6): Kaustiken wandern stetig
+      // mit der Geometrie - Reorganisation gibt es erst an Bifurkationen.
+      // Haus 4 (Zentrum φ=π) atmet leicht ein: der Cusp bewegt sich,
+      // aber bleibt in seiner Umgebung.
+      const flat = RadianceProjection();
+      const breathing = RadianceProjection(
+          houseCurvatures: [0, 0, 0, 0, 0.05, 0, 0, 0]);
+
+      final cuspFlat = flat.numericalCausticPoint(math.pi);
+      final cuspCurved = breathing.numericalCausticPoint(math.pi);
+      final shift = math.sqrt(
+          math.pow(cuspCurved.x - cuspFlat.x, 2) +
+              math.pow(cuspCurved.y - cuspFlat.y, 2));
+
+      // Numerisch verifiziert: shift ≈ 0.19, und er skaliert glatt mit c
+      // (c=0.01→0.05, c=0.02→0.09, c=0.05→0.19, c=0.1→0.31).
+      expect(shift, greaterThan(1e-6)); // die Geometrie wirkt wirklich
+      expect(shift, lessThan(0.25)); // aber stetig, kein Sprung
+    });
+
+    test('Die Häuser atmen mit dem Feld: Krümmung aus Substanz-Anteilen', () {
+      // Leeres Feld: flache Schale.
+      expect(
+          RadianceProjection.houseCurvaturesFromCluster(
+              const ResononCluster()),
+          everyElement(equals(0.0)));
+
+      // Band f nährt Haus (f-1) mod 8, gewichtet mit Substanz-Anteil.
+      final cluster = const ResononCluster()
+          .withResonon(Resonon(
+              id: 1,
+              timestamp: DateTime(2026, 7, 9),
+              frequency: 3,
+              amplitude: 1.0,
+              phase: 0.0,
+              source: ResononSource.sensor))
+          .withResonon(Resonon(
+              id: 2,
+              timestamp: DateTime(2026, 7, 9),
+              frequency: 6,
+              amplitude: 1.0,
+              phase: 1.0,
+              source: ResononSource.sensor));
+
+      final c = RadianceProjection.houseCurvaturesFromCluster(cluster,
+          scale: 0.2);
+      expect(c[2], closeTo(0.1, 1e-12)); // f=3 -> Haus 2, halbe Substanz
+      expect(c[5], closeTo(0.1, 1e-12)); // f=6 -> Haus 5, halbe Substanz
+      expect(c[0] + c[1] + c[3] + c[4] + c[6] + c[7], equals(0.0));
+    });
+
+    test(
+        'Eigenrotation ist ein globaler Phasenfaktor: r, energy/substance exakt invariant',
+        () {
+      // Zwei bereits synchrone Wellen desselben Bandes: die Kopplungskraft
+      // ist null, es bleibt reine Bandrotation ωᵢ = f·ω₀. Sie darf KEINE
+      // Observable außer ψ bewegen.
+      var field = const ResononCluster()
+          .withResonon(Resonon(
+              id: 1,
+              timestamp: DateTime(2026, 7, 9),
+              frequency: 3,
+              amplitude: 1.0,
+              phase: 0.7,
+              source: ResononSource.text))
+          .withResonon(Resonon(
+              id: 2,
+              timestamp: DateTime(2026, 7, 9),
+              frequency: 3,
+              amplitude: 1.0,
+              phase: 0.7,
+              source: ResononSource.text));
+
+      for (int i = 0; i < 10; i++) {
+        final tick = OrbitTick(
+            sequenceNumber: i,
+            timestamp: DateTime(2026, 7, 9),
+            deltaTime: 0.05);
+        field = field.tick(tick);
+        expect(field.coherence(), closeTo(1.0, 1e-12));
+        expect(field.energy() / field.substance(), closeTo(2.0, 1e-9));
+      }
+
+      // ψ ist gewandert: θ = 0.7 + 3·ω₀·0.5.
+      const omega0 = ResononCluster.naturalFrequencyBase;
+      expect(field.orderParameter().meanPhase,
+          closeTo(0.7 + 3 * omega0 * 0.5, 1e-9));
+    });
+
+    test('Zwischen den Bändern entsteht Schwebung: Δθ = Δf·ω₀·t', () {
+      // Die Verstimmung f·ω₀ lässt Bänder auseinanderlaufen - genau die
+      // Dynamik, die die Kaustik-Projektion als wanderndes
+      // Interferenzmuster sichtbar macht.
+      var field = const ResononCluster()
+          .withResonon(Resonon(
+              id: 1,
+              timestamp: DateTime(2026, 7, 9),
+              frequency: 2,
+              amplitude: 1.0,
+              phase: 0.0,
+              source: ResononSource.text))
+          .withResonon(Resonon(
+              id: 2,
+              timestamp: DateTime(2026, 7, 9),
+              frequency: 5,
+              amplitude: 1.0,
+              phase: 0.0,
+              source: ResononSource.text));
+
+      for (int i = 0; i < 10; i++) {
+        final tick = OrbitTick(
+            sequenceNumber: i,
+            timestamp: DateTime(2026, 7, 9),
+            deltaTime: 0.1);
+        field = field.tick(tick);
+      }
+
+      const omega0 = ResononCluster.naturalFrequencyBase;
+      final deltaTheta = field.waves[1].phase - field.waves[0].phase;
+      expect(deltaTheta, closeTo((5 - 2) * omega0 * 1.0, 1e-9));
+    });
+
+    test('Auch die gekrümmte Projektion bleibt eine reine Observable', () {
+      final cluster = const ResononCluster().withResonon(Resonon(
+          id: 1,
+          timestamp: DateTime(2026, 7, 9),
+          frequency: 3,
+          amplitude: 1.0,
+          phase: 0.4,
+          source: ResononSource.sensor));
+
+      final curved = RadianceProjection(
+          houseCurvatures:
+              RadianceProjection.houseCurvaturesFromCluster(cluster));
+
+      final phaseBefore = cluster.waves[0].phase;
+      final i1 = curved.intensityAt(cluster, (x: -0.4, y: 0.2));
+      final i2 = curved.intensityAt(cluster, (x: -0.4, y: 0.2));
+
+      expect(i1, equals(i2));
+      expect(cluster.waves[0].phase, equals(phaseBefore));
     });
   });
 }

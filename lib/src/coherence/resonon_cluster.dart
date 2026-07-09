@@ -88,22 +88,34 @@ class ResononCluster {
     return waves.fold(0.0, (sum, w) => sum + w.amplitude * w.amplitude);
   }
 
-  /// Der zentrale Zeitschritt der schnellen Dynamik (V0.2):
+  /// ω₀ - die Grund-Phasengeschwindigkeit des Feldes. Physikalische
+  /// Begründung der Eigenfrequenzen (angekündigt in V0.2, eingelöst in
+  /// V0.3): jedes Frequenzband f ist eine laufende Mode auf S¹, deren
+  /// Wellenberge mit gemeinsamer Phasengeschwindigkeit ω₀ wandern -
+  /// ψ_f(θ,t) ~ cos(f·(θ - ω₀t) + θᵢ). Daraus folgt zwingend ωᵢ = f·ω₀:
+  /// höhere Moden rotieren proportional schneller, KEIN freier Parameter
+  /// pro Welle.
+  static const double naturalFrequencyBase = 1.0;
+
+  /// Der zentrale Zeitschritt der schnellen Dynamik (V0.3):
   ///
   /// 1. Amplituden zerfallen (Dissipation - ohne externen Input verliert
   ///    das Feld immer Substanz Σ aᵢ²). Verklungene Wellen verlassen das Feld.
-  /// 2. Phasen koppeln nach der erweiterten Kuramoto-Dynamik in
-  ///    Mean-Field-Form PRO FREQUENZBAND:
-  ///        θ̇ᵢ = K · r_Band · sin(ψ_Band − θᵢ)
+  /// 2. Phasen folgen der erweiterten Kuramoto-Dynamik in Mean-Field-Form
+  ///    PRO FREQUENZBAND, jetzt mit Eigenrotation:
+  ///        θ̇ᵢ = ωᵢ + K · r_Band · sin(ψ_Band − θᵢ),   ωᵢ = f_i · ω₀
   ///    Matrixfrei und O(N): jede Phase spürt nur den Ordnungsparameter
   ///    ihres eigenen Bandes, nie eine globale Meta-Invariante. r(t)
   ///    emergiert aus dieser lokalen Kopplung - es steuert sie nicht
   ///    (siehe INPUT_002, Punkt 5). Bänder verschiedener Frequenz koppeln
   ///    nicht (orthogonale Moden, konsistent mit energy()).
   ///
-  /// Bewusst noch ohne freie Eigenrotation (ω-Term): eine gemeinsame
-  /// Rotation pro Band wäre für alle Observablen außer ψ inert und braucht
-  /// erst eine physikalische Begründung der Eigenfrequenzen (V0.3).
+  /// Da alle Wellen eines Bandes dasselbe ω tragen, ist die Eigenrotation
+  /// innerhalb eines Bandes ein globaler Phasenfaktor: r_Band, energy()
+  /// und Substanz bleiben exakt invariant, die Synchronisationsdynamik
+  /// (Phasendifferenzen) ist unverändert. ZWISCHEN den Bändern erzeugt
+  /// f·ω₀ dagegen fortlaufende Verstimmung - die Schwebung, die erst die
+  /// Kaustik-Projektion sichtbar macht (Interferenz der Bänder im Raum).
   ///
   /// Exakte Gegenphase ist ein instabiles Gleichgewicht (r_Band = 0 -> keine
   /// Kraft); jeder neue Impuls bricht die Symmetrie.
@@ -140,8 +152,10 @@ class ResononCluster {
       if (newAmplitude < 1e-6) continue;
 
       final field = bandField[w.frequency]!;
-      final dTheta =
-          couplingStrength * field.r * math.sin(field.meanPhase - w.phase) * dt;
+      final omega = naturalFrequencyBase * w.frequency; // ωᵢ = f·ω₀
+      final dTheta = (omega +
+              couplingStrength * field.r * math.sin(field.meanPhase - w.phase)) *
+          dt;
       final newPhase = (w.phase + dTheta) % (2 * math.pi);
 
       evolved.add(w.copyWith(amplitude: newAmplitude, phase: newPhase));
