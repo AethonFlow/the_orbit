@@ -690,4 +690,219 @@ void main() {
       expect(cluster.waves[0].phase, equals(phaseBefore));
     });
   });
+  group('Sensorium & Osmose (Noesis Protocol IV)', () {
+    ResononCluster coherentBand(int frequency, double phase, {int n = 4}) {
+      var cluster = const ResononCluster();
+      for (int i = 0; i < n; i++) {
+        cluster = cluster.withResonon(Resonon(
+          id: i,
+          timestamp: DateTime(2026, 7, 9),
+          frequency: frequency,
+          amplitude: 1.0,
+          phase: phase,
+          source: ResononSource.sensor,
+        ));
+      }
+      return cluster;
+    }
+
+    test('SpectralTransducer: der Resonator hört Amplitude und Phase exakt',
+        () {
+      // x(t) = 0.8·cos(ω₃t + 1.1) + 0.4·cos(ω₅t + 2.0) über ganze Perioden:
+      // die Bänder 3 und 5 hören ihre Komponente exakt, alle anderen Stille.
+      const transducer = SpectralTransducer(baseFrequencyHz: 1.0);
+      const fs = 64.0;
+      final samples = List<double>.generate(
+          256,
+          (i) =>
+              0.8 * math.cos(2 * math.pi * 3 * i / fs + 1.1) +
+              0.4 * math.cos(2 * math.pi * 5 * i / fs + 2.0));
+
+      final candidates = transducer.transduce(
+          (samples: samples, sampleRate: fs),
+          timestamp: DateTime(2026, 7, 9));
+
+      expect(candidates.length, equals(2));
+      final b3 = candidates.firstWhere((c) => c.frequency == 3);
+      final b5 = candidates.firstWhere((c) => c.frequency == 5);
+      expect(b3.amplitude, closeTo(0.8, 1e-9));
+      expect(b3.phase, closeTo(1.1, 1e-9));
+      expect(b5.amplitude, closeTo(0.4, 1e-9));
+      expect(b5.phase, closeTo(2.0, 1e-9));
+    });
+
+    test('RhythmTransducer: gleichmäßiger Takt = starker Impuls auf Band 4',
+        () {
+      const transducer = RhythmTransducer(baseRateHz: 1.0);
+      // 9 Ereignisse im exakten 4-Hz-Takt (alle 250 ms).
+      final events = List<DateTime>.generate(
+          9, (i) => DateTime.fromMicrosecondsSinceEpoch(i * 250000));
+
+      final candidate =
+          transducer.transduce(events, timestamp: DateTime(2026, 7, 9)).single;
+      expect(candidate.frequency, equals(4));
+      expect(candidate.amplitude, closeTo(1.0, 1e-12)); // cv = 0
+      expect(candidate.phase, closeTo(0.0, 1e-9));
+
+      // Kein Rhythmus ohne Wiederholung.
+      expect(
+          transducer.transduce(events.sublist(0, 2),
+              timestamp: DateTime(2026, 7, 9)),
+          isEmpty);
+    });
+
+    test('Malus-Einlass: gleichphasig strömt, gegenphasig bleibt nur Neugier',
+        () {
+      final field = coherentBand(2, 0.3); // r_B = 1, ψ_B = 0.3
+      final gate = ResonantGate(); // ε = 0.15, Membran p = 0.5
+
+      final inPhase = Resonon(
+          id: 90,
+          timestamp: DateTime(2026, 7, 9),
+          frequency: 2,
+          amplitude: 1.0,
+          phase: 0.3,
+          source: ResononSource.sensor);
+      final antiPhase = Resonon(
+          id: 91,
+          timestamp: DateTime(2026, 7, 9),
+          frequency: 2,
+          amplitude: 1.0,
+          phase: 0.3 + math.pi,
+          source: ResononSource.sensor);
+
+      expect(gate.transmission(inPhase, field), closeTo(1.0, 1e-12));
+      expect(gate.transmission(antiPhase, field), closeTo(0.15, 1e-12));
+
+      final admitted = gate.admit([inPhase, antiPhase], field);
+      expect(admitted.length, equals(2));
+      expect(admitted[0].amplitude, closeTo(0.5, 1e-12)); // T·p = 1.0·0.5
+      expect(admitted[1].amplitude, closeTo(0.075, 1e-12)); // ε·p
+
+      // Grenzreibung: die Phase verschiebt sich beim Übertritt
+      // (coConstruct: sin(r_B)·(1−p) = sin(1)·0.5).
+      expect(admitted[0].phase,
+          closeTo((0.3 + math.sin(1.0) * 0.5) % (2 * math.pi), 1e-9));
+    });
+
+    test('Chaotisches Band: keine Identität, keine Wählerischkeit', () {
+      // Phasen {0, π}: r_B = 0 exakt. T = ε + (1−ε)/2 = 0.575 für JEDE
+      // Kandidatenphase - ein Band ohne Identität kann nichts auslöschen.
+      final chaos = const ResononCluster()
+          .withResonon(Resonon(
+              id: 1,
+              timestamp: DateTime(2026, 7, 9),
+              frequency: 3,
+              amplitude: 1.0,
+              phase: 0.0,
+              source: ResononSource.sensor))
+          .withResonon(Resonon(
+              id: 2,
+              timestamp: DateTime(2026, 7, 9),
+              frequency: 3,
+              amplitude: 1.0,
+              phase: math.pi,
+              source: ResononSource.sensor));
+
+      final gate = ResonantGate();
+      for (final phase in [0.0, 1.0, math.pi, 4.5]) {
+        final candidate = Resonon(
+            id: 99,
+            timestamp: DateTime(2026, 7, 9),
+            frequency: 3,
+            amplitude: 1.0,
+            phase: phase,
+            source: ResononSource.sensor);
+        expect(gate.transmission(candidate, chaos), closeTo(0.575, 1e-12));
+      }
+    });
+
+    test('Neugier-Leckstrom: unbesetzte Bänder bleiben erreichbar', () {
+      // Keine Echokammer: auch das maximal Fremde behält eine Stimme.
+      final field = coherentBand(2, 0.3);
+      final gate = ResonantGate();
+      final stranger = Resonon(
+          id: 77,
+          timestamp: DateTime(2026, 7, 9),
+          frequency: 7, // unbesetzt
+          amplitude: 1.0,
+          phase: 2.2,
+          source: ResononSource.sensor);
+
+      expect(gate.transmission(stranger, field), closeTo(0.3, 1e-12));
+      final admitted = gate.admit([stranger], field);
+      expect(admitted.single.amplitude, closeTo(0.15, 1e-12)); // ε_nov·p
+      expect(admitted.single.frequency, equals(7));
+    });
+
+    test('Das Gate ist reine Funktion: nicht-invasiv und deterministisch',
+        () {
+      final field = coherentBand(2, 0.3);
+      final phasesBefore = field.waves.map((w) => w.phase).toList();
+      final gate = ResonantGate();
+      final candidate = Resonon(
+          id: 5,
+          timestamp: DateTime(2026, 7, 9),
+          frequency: 2,
+          amplitude: 1.0,
+          phase: 1.0,
+          source: ResononSource.sensor);
+
+      final a1 = gate.admit([candidate], field);
+      final a2 = gate.admit([candidate], field);
+      expect(a1.single.amplitude, equals(a2.single.amplitude));
+      expect(a1.single.phase, equals(a2.single.phase));
+      for (int i = 0; i < field.waves.length; i++) {
+        expect(field.waves[i].phase, equals(phasesBefore[i]));
+      }
+    });
+
+    test('Ende-zu-Ende: die Suppe nährt das Feld durch die Membran', () {
+      // Zwei identische Felder. Eines schwimmt in der Suppe (resonante
+      // Kandidaten durch das Gate), eines hungert. Die Dissipation frisst
+      // beide - aber nur das genährte Feld bleibt substanziell am Leben.
+      final engine = ResonanceEngine();
+      final gate = ResonantGate();
+      final seed = Resonon(
+          id: 0,
+          timestamp: DateTime(2026, 7, 9),
+          frequency: 2,
+          amplitude: 1.0,
+          phase: 0.0,
+          source: ResononSource.text);
+
+      var fed = const FieldState()
+          .withCluster(const ResononCluster().withResonon(seed));
+      var starved = fed;
+
+      for (int i = 0; i < 20; i++) {
+        final tick = OrbitTick(
+            sequenceNumber: i,
+            timestamp: DateTime(2026, 7, 9),
+            deltaTime: 0.05);
+
+        // Die Welt klopft im Takt des Feldes an (Entrainment).
+        final band = ResonantGate.bandField(fed.cluster, 2);
+        final candidate = Resonon(
+            id: 100 + i,
+            timestamp: DateTime(2026, 7, 9),
+            frequency: 2,
+            amplitude: 1.0,
+            phase: band.occupied ? band.psi : 0.0,
+            source: ResononSource.sensor);
+
+        fed = engine.step(
+            currentState: fed,
+            tick: tick,
+            incomingResonons: gate.admit([candidate], fed.cluster));
+        starved = engine.step(
+            currentState: starved, tick: tick, incomingResonons: const []);
+      }
+
+      expect(starved.cluster.substance(), lessThan(0.05)); // e^(-4) ≈ 0.018
+      expect(fed.cluster.substance(), greaterThan(0.1));
+      expect(fed.cluster.substance(),
+          greaterThan(10 * starved.cluster.substance()));
+    });
+  });
 }
