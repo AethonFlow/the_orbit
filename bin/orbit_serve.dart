@@ -166,8 +166,22 @@ void main() async {
   // HTTP: eine Seite, ein WebSocket.
   // ---------------------------------------------------------------------
   final html = _loadHtml();
-  final server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
+  // anyIPv4: auch Geräte im selben (Heim-)Netz dürfen ans Feld -
+  // Handy/Tablet können mittippen. Windows fragt beim ersten Start
+  // einmal nach der Firewall-Freigabe ("privates Netzwerk" genügt).
+  final server = await HttpServer.bind(InternetAddress.anyIPv4, port);
   print('TheOrbit lebt: http://localhost:$port  (Strg+C beendet)');
+  try {
+    final interfaces =
+        await NetworkInterface.list(type: InternetAddressType.IPv4);
+    for (final ni in interfaces) {
+      for (final addr in ni.addresses) {
+        print('  im Heimnetz:  http://${addr.address}:$port  (${ni.name})');
+      }
+    }
+  } catch (_) {/* Netzliste ist Komfort, kein Muss */}
+  print('  Hinweis: Mikrofon erlauben Browser nur auf localhost oder'
+      ' https - vom Handy aus fließt der Tipp-Strom, die Stimme nicht.');
 
   await for (final request in server) {
     if (request.uri.path == '/ws') {
