@@ -73,6 +73,10 @@ class RadianceProjection {
 
   /// Krümmungsgewichte c_k der acht Häuser (Haus k zentriert bei φ_k = 2πk/8).
   /// Alle null (Default): die Schale ist der Kreis, die Kaustik die Nephroide.
+  ///
+  /// Kontrakt: exakt [houseCount] Einträge. (Nicht per assert im
+  /// const-Konstruktor prüfbar - List.length ist kein konstanter Ausdruck;
+  /// eine kürzere Liste fällt in radiusAt() sofort als RangeError auf.)
   final List<double> houseCurvatures;
 
   /// Konzentration κ der von-Mises-Ausbuchtungen: bestimmt, wie lokal ein
@@ -85,7 +89,7 @@ class RadianceProjection {
     this.rayCount = 64,
     this.houseCurvatures = const [0, 0, 0, 0, 0, 0, 0, 0],
     this.houseConcentration = 10.0,
-  }) : assert(houseCurvatures.length == houseCount);
+  });
 
   /// Leitet die Haus-Krümmungen nicht-invasiv aus dem Feld ab: Frequenzband
   /// f nährt Haus (f-1) mod 8 mit seinem Substanz-Anteil. Die Organe atmen
