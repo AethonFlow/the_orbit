@@ -78,22 +78,73 @@ class ResononCluster {
 
   double coherence() => orderParameter().r;
 
-  /// Der zentrale Zeitschritt der schnellen Dynamik: Amplituden zerfallen
-  /// (Dissipation - ohne externen Input verliert das Feld immer Energie).
-  /// Phasen bleiben in V0.1 bewusst ruhend (noch keine freie Kuramoto-
-  /// Rotation, noch kein Kopplungsterm) - reine, beobachtbare Dämpfung als
-  /// erster Atemzug. Verklungene Wellen (Amplitude nahe Null) verlassen
-  /// das Feld.
+  /// Die Substanz des Feldes: inkohärente Energie Σ aᵢ² - phaseninvariant.
+  ///
+  /// Dies ist die Größe, die ohne externen Input strikt monoton fällt
+  /// (Dissipation frisst Substanz). Die kohärente energy() darf dagegen
+  /// durch Synchronisation atmen: Kopplung ordnet Substanz, sie erzeugt
+  /// keine - deshalb gilt stets energy() <= (Σ aᵢ)² (Cauchy-Schwarz).
+  double substance() {
+    return waves.fold(0.0, (sum, w) => sum + w.amplitude * w.amplitude);
+  }
+
+  /// Der zentrale Zeitschritt der schnellen Dynamik (V0.2):
+  ///
+  /// 1. Amplituden zerfallen (Dissipation - ohne externen Input verliert
+  ///    das Feld immer Substanz Σ aᵢ²). Verklungene Wellen verlassen das Feld.
+  /// 2. Phasen koppeln nach der erweiterten Kuramoto-Dynamik in
+  ///    Mean-Field-Form PRO FREQUENZBAND:
+  ///        θ̇ᵢ = K · r_Band · sin(ψ_Band − θᵢ)
+  ///    Matrixfrei und O(N): jede Phase spürt nur den Ordnungsparameter
+  ///    ihres eigenen Bandes, nie eine globale Meta-Invariante. r(t)
+  ///    emergiert aus dieser lokalen Kopplung - es steuert sie nicht
+  ///    (siehe INPUT_002, Punkt 5). Bänder verschiedener Frequenz koppeln
+  ///    nicht (orthogonale Moden, konsistent mit energy()).
+  ///
+  /// Bewusst noch ohne freie Eigenrotation (ω-Term): eine gemeinsame
+  /// Rotation pro Band wäre für alle Observablen außer ψ inert und braucht
+  /// erst eine physikalische Begründung der Eigenfrequenzen (V0.3).
+  ///
+  /// Exakte Gegenphase ist ein instabiles Gleichgewicht (r_Band = 0 -> keine
+  /// Kraft); jeder neue Impuls bricht die Symmetrie.
   ResononCluster tick(OrbitTick orbitTick) {
     const fastDecayRate = 2.0; // deutlich schneller als MemoryState (träge Schicht)
+    const couplingStrength = 4.0; // K - stark genug, um Dissipation lokal zu übertönen
     final dt = orbitTick.deltaTime;
     final decayFactor = math.exp(-fastDecayRate * dt);
+
+    // Mean-Field pro Band aus dem AKTUELLEN Zustand (vor dem Schritt) -
+    // alle Wellen sehen dasselbe Feld, die Reihenfolge bleibt bedeutungslos.
+    final Map<int, List<Resonon>> bands = {};
+    for (final w in waves) {
+      bands.putIfAbsent(w.frequency, () => []).add(w);
+    }
+    final Map<int, ({double r, double meanPhase})> bandField = {};
+    for (final entry in bands.entries) {
+      double sumCos = 0.0;
+      double sumSin = 0.0;
+      for (final w in entry.value) {
+        sumCos += math.cos(w.phase);
+        sumSin += math.sin(w.phase);
+      }
+      final n = entry.value.length;
+      bandField[entry.key] = (
+        r: math.sqrt(sumCos * sumCos + sumSin * sumSin) / n,
+        meanPhase: math.atan2(sumSin, sumCos),
+      );
+    }
 
     final evolved = <Resonon>[];
     for (final w in waves) {
       final newAmplitude = w.amplitude * decayFactor;
       if (newAmplitude < 1e-6) continue;
-      evolved.add(w.copyWith(amplitude: newAmplitude));
+
+      final field = bandField[w.frequency]!;
+      final dTheta =
+          couplingStrength * field.r * math.sin(field.meanPhase - w.phase) * dt;
+      final newPhase = (w.phase + dTheta) % (2 * math.pi);
+
+      evolved.add(w.copyWith(amplitude: newAmplitude, phase: newPhase));
     }
     return ResononCluster(waves: evolved);
   }

@@ -12,25 +12,152 @@ void main() {
       expect(field.activeWavesCount, equals(0));
     });
 
-    test('Ohne Input darf energy() durch tick() niemals zunehmen', () {
-      final initialField = const ResononCluster().withResonon(
-        Resonon(
-          id: 1,
-          timestamp: DateTime.now(),
-          frequency: 3,
-          amplitude: 2.5,
-          phase: 0.0,
-          source: ResononSource.text,
-        ),
-      );
+    test('Ohne Input darf die Substanz Σa² durch tick() niemals zunehmen', () {
+      // Die Substanz-Invariante (V0.2): Dissipation frisst Substanz,
+      // Kuramoto-Kopplung ordnet sie nur um - über gemischte Bänder und
+      // ungeordnete Phasen hinweg muss Σa² strikt monoton fallen.
+      var field = const ResononCluster()
+          .withResonon(Resonon(
+              id: 1,
+              timestamp: DateTime.now(),
+              frequency: 2,
+              amplitude: 1.5,
+              phase: 0.3,
+              source: ResononSource.text))
+          .withResonon(Resonon(
+              id: 2,
+              timestamp: DateTime.now(),
+              frequency: 2,
+              amplitude: 0.7,
+              phase: 2.0,
+              source: ResononSource.mouse))
+          .withResonon(Resonon(
+              id: 3,
+              timestamp: DateTime.now(),
+              frequency: 5,
+              amplitude: 1.0,
+              phase: 4.0,
+              source: ResononSource.sensor));
 
-      final energyBefore = initialField.energy();
+      var substanceBefore = field.substance();
+      for (int i = 0; i < 50; i++) {
+        final tick = OrbitTick(
+            sequenceNumber: i, timestamp: DateTime.now(), deltaTime: 0.05);
+        field = field.tick(tick);
+        expect(field.substance(), lessThan(substanceBefore));
+        substanceBefore = field.substance();
+      }
+    });
 
-      final tick = OrbitTick(
-          sequenceNumber: 1, timestamp: DateTime.now(), deltaTime: 1.0);
-      final decayedField = initialField.tick(tick);
+    test('Kohärente Energie bleibt stets unter dem Substanz-Deckel (Σa)²', () {
+      // Cauchy-Schwarz: Kopplung kann energy() heben, aber niemals über
+      // das Quadrat der Gesamtamplitude - Ordnung erzeugt keine Substanz.
+      var field = const ResononCluster()
+          .withResonon(Resonon(
+              id: 1,
+              timestamp: DateTime.now(),
+              frequency: 3,
+              amplitude: 1.0,
+              phase: 0.0,
+              source: ResononSource.text))
+          .withResonon(Resonon(
+              id: 2,
+              timestamp: DateTime.now(),
+              frequency: 3,
+              amplitude: 1.0,
+              phase: math.pi - 0.4,
+              source: ResononSource.text))
+          .withResonon(Resonon(
+              id: 3,
+              timestamp: DateTime.now(),
+              frequency: 7,
+              amplitude: 2.0,
+              phase: 1.0,
+              source: ResononSource.sensor));
 
-      expect(decayedField.energy(), lessThan(energyBefore));
+      for (int i = 0; i < 50; i++) {
+        final tick = OrbitTick(
+            sequenceNumber: i, timestamp: DateTime.now(), deltaTime: 0.05);
+        field = field.tick(tick);
+        final amplitudeSum =
+            field.waves.fold(0.0, (double s, w) => s + w.amplitude);
+        expect(field.energy(),
+            lessThanOrEqualTo(amplitudeSum * amplitudeSum + 1e-9));
+      }
+    });
+
+    test(
+        'Kuramoto-Kopplung: nahezu gegenphasige Wellen desselben Bandes synchronisieren',
+        () {
+      // Zwei fast gegenphasige Wellen: r startet nahe 0. Die lokale
+      // Mean-Field-Kopplung richtet sie aus - r(t) emergiert, ohne dass
+      // irgendeine globale Größe eingreift. Zugleich wächst der
+      // Ordnungsanteil energy()/substance(), während die Substanz zerfällt:
+      // Synchronisation konzentriert Energie, sie erschafft keine.
+      var field = const ResononCluster()
+          .withResonon(Resonon(
+              id: 1,
+              timestamp: DateTime.now(),
+              frequency: 3,
+              amplitude: 1.0,
+              phase: 0.0,
+              source: ResononSource.text))
+          .withResonon(Resonon(
+              id: 2,
+              timestamp: DateTime.now(),
+              frequency: 3,
+              amplitude: 1.0,
+              phase: math.pi - 0.4,
+              source: ResononSource.text));
+
+      final rBefore = field.coherence();
+      final orderRatioBefore = field.energy() / field.substance();
+      final substanceBefore = field.substance();
+
+      for (int i = 0; i < 20; i++) {
+        final tick = OrbitTick(
+            sequenceNumber: i, timestamp: DateTime.now(), deltaTime: 0.05);
+        field = field.tick(tick);
+      }
+
+      final rAfter = field.coherence();
+      final orderRatioAfter = field.energy() / field.substance();
+
+      expect(rBefore, lessThan(0.25)); // fast gegenphasig
+      expect(rAfter, greaterThan(0.9)); // synchronisiert
+      expect(orderRatioAfter, greaterThan(orderRatioBefore));
+      expect(orderRatioAfter, greaterThan(1.9)); // nahe Maximum 2.0 (N=2)
+      expect(field.substance(), lessThan(substanceBefore));
+    });
+
+    test('Bänder bleiben orthogonal: verschiedene Frequenzen koppeln nicht',
+        () {
+      // Jede Welle allein in ihrem Band: r_Band = 1, ψ_Band = eigene Phase,
+      // die Kopplungskraft ist exakt null - Phasen bleiben eingefroren.
+      var field = const ResononCluster()
+          .withResonon(Resonon(
+              id: 1,
+              timestamp: DateTime.now(),
+              frequency: 2,
+              amplitude: 1.0,
+              phase: 0.5,
+              source: ResononSource.mouse))
+          .withResonon(Resonon(
+              id: 2,
+              timestamp: DateTime.now(),
+              frequency: 5,
+              amplitude: 1.0,
+              phase: 1.7,
+              source: ResononSource.mouse));
+
+      for (int i = 0; i < 10; i++) {
+        final tick = OrbitTick(
+            sequenceNumber: i, timestamp: DateTime.now(), deltaTime: 0.1);
+        field = field.tick(tick);
+      }
+
+      expect(field.waves[0].phase, closeTo(0.5, 1e-9));
+      expect(field.waves[1].phase, closeTo(1.7, 1e-9));
     });
 
     test('Die Reihenfolge des Hinzufügens darf das Endergebnis nicht verändern',
@@ -180,6 +307,199 @@ void main() {
 
       final event = observer.detectEvent(stateOld, stateNew, tick);
       expect(event.tick.sequenceNumber, equals(1));
+    });
+  });
+
+  group('Kaustik-Projektion 𝒫 (Noesis Protocol II)', () {
+    const projection = RadianceProjection(); // R=1, σ=0.06, M=64
+
+    ResononCluster clusterWithPhases(List<double> phases, {int frequency = 2}) {
+      var cluster = const ResononCluster();
+      for (int i = 0; i < phases.length; i++) {
+        cluster = cluster.withResonon(Resonon(
+          id: i,
+          timestamp: DateTime(2026, 7, 9),
+          frequency: frequency,
+          amplitude: 1.0,
+          phase: phases[i],
+          source: ResononSource.sensor,
+        ));
+      }
+      return cluster;
+    }
+
+    ({double value, double x, double y}) gridMax(ResononCluster cluster,
+        {int gridSize = 61}) {
+      final grid = projection.intensityGrid(cluster, gridSize: gridSize);
+      var best = (value: 0.0, x: 0.0, y: 0.0);
+      for (int i = 0; i < gridSize; i++) {
+        for (int j = 0; j < gridSize; j++) {
+          final v = grid[i * gridSize + j];
+          if (v > best.value) {
+            best = (
+              value: v,
+              x: -1.0 + 2.0 * i / (gridSize - 1),
+              y: -1.0 + 2.0 * j / (gridSize - 1),
+            );
+          }
+        }
+      }
+      return best;
+    }
+
+    double distanceToCaustic(double px, double py) {
+      // Beleuchtete Innenwand: φ ∈ (π/2, 3π/2)
+      double minDist = double.infinity;
+      for (int k = 0; k <= 400; k++) {
+        final phi = math.pi / 2 + math.pi * k / 400 + 1e-3;
+        final c = projection.causticPoint(phi);
+        final d = math.sqrt(
+            (px - c.x) * (px - c.x) + (py - c.y) * (py - c.y));
+        if (d < minDist) minDist = d;
+      }
+      return minDist;
+    }
+
+    test('Householder-Reflexion: normerhaltend, involutiv, Reflexionsgesetz',
+        () {
+      const d = (x: -1.0, y: 0.0);
+      final n = (x: math.cos(2.3), y: math.sin(2.3));
+
+      final u = projection.reflect(d, n);
+      // Normerhaltung |u| = |d|
+      expect(u.x * u.x + u.y * u.y, closeTo(1.0, 1e-12));
+      // Reflexionsgesetz: u·n = -(d·n)
+      expect(u.x * n.x + u.y * n.y,
+          closeTo(-(d.x * n.x + d.y * n.y), 1e-12));
+      // Involution H² = I
+      final back = projection.reflect(u, n);
+      expect(back.x, closeTo(d.x, 1e-12));
+      expect(back.y, closeTo(d.y, 1e-12));
+    });
+
+    test('Analytische Kaustik trägt den Cusp bei (-R/2, 0)', () {
+      final cusp = projection.causticPoint(math.pi);
+      expect(cusp.x, closeTo(-0.5, 1e-12));
+      expect(cusp.y, closeTo(0.0, 1e-12));
+    });
+
+    test('Kohärentes Feld: das Intensitätsmaximum liegt auf der Nephroide',
+        () {
+      // r = 1: acht gleichphasige Wellen. Die Vorhersage aus INPUT_002
+      // Punkt 7 - das Feld kondensiert auf die geometrische Kaustik.
+      final coherent = clusterWithPhases(List.filled(8, 0.3));
+      final peak = gridMax(coherent);
+
+      expect(peak.value, greaterThan(0.0));
+      expect(distanceToCaustic(peak.x, peak.y),
+          lessThan(0.08)); // innerhalb der Kernbreite σ
+    });
+
+    test('Observable-Identität: I_max ist exakt proportional zu energy()',
+        () {
+      // Einbandig gilt I(p) = |Z_Band|²·|Σe^(ifφ)G|² - die Helligkeit der
+      // Kaustik MISST die kohärente Energie, die Form bleibt Geometrie.
+      final coherent = clusterWithPhases(List.filled(8, 0.3));
+      final partial = clusterWithPhases(List.generate(
+          8, (k) => 0.3 + (k / 7 - 0.5) * math.pi));
+
+      final peakCoherent = gridMax(coherent);
+      final peakPartial = gridMax(partial);
+
+      final cCoherent = peakCoherent.value / coherent.energy();
+      final cPartial = peakPartial.value / partial.energy();
+      expect(cCoherent, closeTo(cPartial, cCoherent * 1e-9));
+
+      // Gleiches r nach globaler Phasenrotation -> identisches Bild.
+      final rotated = clusterWithPhases(List.filled(8, 0.3 + 1.234));
+      expect(gridMax(rotated).value,
+          closeTo(peakCoherent.value, peakCoherent.value * 1e-9));
+    });
+
+    test('Inkohärentes Feld (r=0): die Kaustik verlöscht vollständig', () {
+      // Acht Wellen, Phasen gleichverteilt auf 2π: Σe^(iθ) = 0 exakt.
+      // Viele Quellen, keine Erkenntnis - destruktive Auslöschung
+      // verdunkelt die gesamte Beobachtungsebene.
+      final dark = clusterWithPhases(
+          List.generate(8, (k) => 2 * math.pi * k / 8));
+
+      expect(dark.energy(), closeTo(0.0, 1e-9));
+      final cusp = projection.causticPoint(math.pi);
+      expect(projection.intensityAt(dark, (x: cusp.x, y: cusp.y)),
+          closeTo(0.0, 1e-12));
+      expect(projection.intensityAt(dark, (x: 0.0, y: 0.0)),
+          closeTo(0.0, 1e-12));
+    });
+
+    test(
+        'Ende-zu-Ende: die Kaustik leuchtet auf, während r(t) emergiert',
+        () {
+      // Der Bogen aus INPUT_002, Punkt 7, als lebendiger Testlauf:
+      // Zwei fast gegenphasige Wellen starten dunkel (r klein, Cusp dunkel).
+      // Die lokale Kuramoto-Kopplung synchronisiert sie Tick für Tick -
+      // OHNE jeden Eingriff von außen - und der CausticObserver sieht die
+      // Brennlinie streng monoton aufleuchten, während die Substanz zerfällt.
+      // Kohärenz wird buchstäblich sichtbar.
+      final engine = ResonanceEngine();
+      final observer = CausticObserver();
+      engine.registerObserver(observer);
+
+      var state = const FieldState().withCluster(const ResononCluster()
+          .withResonon(Resonon(
+              id: 1,
+              timestamp: DateTime(2026, 7, 9),
+              frequency: 2,
+              amplitude: 1.0,
+              phase: 0.0,
+              source: ResononSource.text))
+          .withResonon(Resonon(
+              id: 2,
+              timestamp: DateTime(2026, 7, 9),
+              frequency: 2,
+              amplitude: 1.0,
+              phase: math.pi - 0.4,
+              source: ResononSource.text)));
+
+      for (int i = 0; i < 20; i++) {
+        final tick = OrbitTick(
+            sequenceNumber: i,
+            timestamp: DateTime(2026, 7, 9),
+            deltaTime: 0.05);
+        state = engine.step(
+            currentState: state, tick: tick, incomingResonons: const []);
+      }
+
+      final samples = observer.samples;
+      expect(samples.length, equals(20));
+
+      // r(t) emergiert aus der lokalen Kopplung.
+      expect(samples.first.orderParameterR, lessThan(0.3));
+      expect(samples.last.orderParameterR, greaterThan(0.9));
+
+      // Die normierte Helligkeit am Cusp wächst mit JEDEM Tick -
+      // Synchronisation ist als Leuchten messbar (numerisch: 8.4 -> 149).
+      for (int i = 1; i < samples.length; i++) {
+        expect(samples[i].brightness, greaterThan(samples[i - 1].brightness));
+      }
+      expect(samples.last.brightness,
+          greaterThan(samples.first.brightness * 10));
+
+      // Ko-Emergenz: beide Observablen wachsen gemeinsam, keine steuert.
+      expect(state.globalCoherence, closeTo(samples.last.orderParameterR, 1e-12));
+    });
+
+    test('𝒫 ist eine reine Observable: deterministisch und nicht-invasiv',
+        () {
+      final cluster = clusterWithPhases([0.1, 1.4, 3.0]);
+      final phasesBefore = cluster.waves.map((w) => w.phase).toList();
+
+      final i1 = projection.intensityAt(cluster, (x: -0.5, y: 0.1));
+      final i2 = projection.intensityAt(cluster, (x: -0.5, y: 0.1));
+
+      expect(i1, equals(i2));
+      for (int i = 0; i < cluster.waves.length; i++) {
+        expect(cluster.waves[i].phase, equals(phasesBefore[i]));
+      }
     });
   });
 }

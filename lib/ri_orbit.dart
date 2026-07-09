@@ -9,3 +9,5 @@ export 'src/coherence/memory_state.dart';
 export 'src/resonance/field_state.dart';
 export 'src/resonance/resonance_engine.dart';
 export 'src/observability/field_observer.dart'; // WICHTIG!
+export 'src/observability/radiance_projection.dart';
+export 'src/observability/caustic_observer.dart';
