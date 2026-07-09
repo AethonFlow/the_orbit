@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>TheOrbit — Kaustik-Labor</title>
+<!--
+  Kaustik-Labor: JavaScript-Spiegel der Dart-Physik (V0.3).
+
+  Dies ist ein reiner BEOBACHTER im Sinne von ADR_001: die Simulation
+  reproduziert ResononCluster.tick() (Dissipation + Kuramoto pro Band +
+  Eigenrotation f*omega0) und RadianceProjection (Householder-Reflexion an
+  der 8-Haeuser-Schale, I(p) = |P A|^2). Nichts hier wirkt auf den Kern
+  zurueck — es macht hoerbare Kohaerenz sichtbar: r(t) und das Leuchten
+  der Brennlinie sind ko-emergente Observablen derselben Dynamik.
+-->
+<style>
+  :root {
+    --bg: #0b0e14; --panel: #131826; --line: #232b3d;
+    --text: #cfd8e3; --dim: #7a8699; --accent: #7fd4ff; --warm: #ffb45e;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 14px/1.5 "Segoe UI", system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; padding: 18px;
+  }
+  h1 { font-size: 18px; font-weight: 600; letter-spacing: .04em; margin-bottom: 2px; }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--dim); font-size: 12px; margin-bottom: 14px; }
+  .wrap { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+  canvas.field { background: #060810; border: 1px solid var(--line); border-radius: 10px; }
+  .panel {
+    width: 320px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); margin-top: 6px; }
+  label { display: flex; justify-content: space-between; font-size: 13px; color: var(--text); }
+  label b { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .row { display: flex; gap: 8px; align-items: center; }
+  button {
+    background: #1c2436; color: var(--text); border: 1px solid var(--line);
+    border-radius: 7px; padding: 6px 12px; cursor: pointer; font-size: 13px;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  .metric { display: flex; justify-content: space-between; align-items: baseline; }
+  .metric .v { font-size: 20px; font-weight: 600; color: var(--warm); font-variant-numeric: tabular-nums; }
+  canvas.spark { width: 100%; height: 46px; background: #0d1220; border: 1px solid var(--line); border-radius: 6px; }
+  .check { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+  .hint { color: var(--dim); font-size: 11.5px; }
+</style>
+</head>
+<body>
+<h1>The<span>Orbit</span> · Kaustik-Labor</h1>
+<div class="sub">Kohärenz als Leuchten: r(t) emergiert lokal — die Brennlinie macht es sichtbar (INPUT_002, Punkt 7)</div>
+
+<div class="wrap">
+  <canvas id="field" class="field" width="560" height="560"></canvas>
+
+  <div class="panel">
+    <div class="metric"><span>r(t) — Ordnungsparameter</span><span class="v" id="rVal">–</span></div>
+    <canvas id="rSpark" class="spark" width="288" height="46"></canvas>
+
+    <div class="metric"><span>Helligkeit am Cusp / Substanz</span><span class="v" id="bVal">–</span></div>
+    <canvas id="bSpark" class="spark" width="288" height="46"></canvas>
+
+    <h2>Kern-Dynamik (tick)</h2>
+    <label>Kopplung K <b id="kVal"></b></label>
+    <input type="range" id="k" min="0" max="8" step="0.1" value="4">
+    <label>Eigenfrequenz ω₀ <b id="wVal"></b></label>
+    <input type="range" id="w0" min="0" max="3" step="0.05" value="1">
+    <label>Zeitlupe (dt/Frame) <b id="dtVal"></b></label>
+    <input type="range" id="dt" min="0.001" max="0.02" step="0.001" value="0.006">
+
+    <h2>Beobachtung (Projektion 𝒫)</h2>
+    <label>Häuser-Skala (Krümmung) <b id="hVal"></b></label>
+    <input type="range" id="hs" min="0" max="0.3" step="0.01" value="0">
+    <div class="check"><input type="checkbox" id="breathe" checked> Häuser atmen mit dem Feld (Substanz-Anteile)</div>
+    <div class="check"><input type="checkbox" id="showCaustic" checked> Kaustik-Linie (det ∂Φ/∂(φ,s) = 0)</div>
+    <div class="check"><input type="checkbox" id="showRays"> Strahlen zeigen</div>
+
+    <h2>Anregung</h2>
+    <label>Phasenstreuung beim Anregen <b id="sVal"></b></label>
+    <input type="range" id="spread" min="0" max="3.14" step="0.01" value="2.8">
+    <div class="row">
+      <button id="reseed">Feld neu anregen</button>
+      <button id="pulse">Einzelimpuls</button>
+      <button id="pause">Pause</button>
+    </div>
+    <div class="check"><input type="checkbox" id="auto" checked> sanfte Puls-Injektion (Feld am Leben halten)</div>
+    <div class="hint">Streuung hoch = inkohärenter Start (dunkel). Die lokale Kuramoto-Kopplung
+    synchronisiert die Bänder — die Nephroide leuchtet auf. ω₀ &gt; 0 lässt die Bänder
+    gegeneinander laufen: wandernde Interferenz auf der Brennlinie.</div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ---------- Kern-Physik: Spiegel von ResononCluster.tick() (V0.3) ----------
+const FAST_DECAY = 2.0;
+let K = 4.0, OMEGA0 = 1.0, DT = 0.006;
+
+let waves = [];   // {f, a, th}
+let idSeq = 0;
+
+function tick(dt) {
+  const bands = new Map();
+  for (const w of waves) {
+    if (!bands.has(w.f)) bands.set(w.f, {c: 0, s: 0, n: 0});
+    const b = bands.get(w.f);
+    b.c += Math.cos(w.th); b.s += Math.sin(w.th); b.n++;
+  }
+  for (const b of bands.values()) {
+    b.r = Math.hypot(b.c, b.s) / b.n;
+    b.psi = Math.atan2(b.s, b.c);
+  }
+  const decay = Math.exp(-FAST_DECAY * dt);
+  const out = [];
+  for (const w of waves) {
+    const a = w.a * decay;
+    if (a < 1e-6) continue;
+    const b = bands.get(w.f);
+    const dth = (OMEGA0 * w.f + K * b.r * Math.sin(b.psi - w.th)) * dt;
+    out.push({f: w.f, a, th: (w.th + dth) % (2 * Math.PI)});
+  }
+  waves = out;
+}
+const substance = () => waves.reduce((s, w) => s + w.a * w.a, 0);
+function orderParameter() {
+  if (!waves.length) return {r: 1, psi: 0};
+  let c = 0, s = 0;
+  for (const w of waves) { c += Math.cos(w.th); s += Math.sin(w.th); }
+  return {r: Math.hypot(c, s) / waves.length, psi: Math.atan2(s, c)};
+}
+
+// ---------- Beobachtung: Spiegel von RadianceProjection ----------
+const HOUSES = 8, KAPPA = 10.0, R = 1.0, SIGMA = 0.06, RAYS = 64;
+let houseCurv = new Array(HOUSES).fill(0);
+
+function radiusAt(phi) {
+  let b = 0;
+  for (let k = 0; k < HOUSES; k++) {
+    const c = houseCurv[k];
+    if (!c) continue;
+    b += c * Math.exp(KAPPA * (Math.cos(phi - 2 * Math.PI * k / HOUSES) - 1));
+  }
+  return R * (1 + b);
+}
+function dRadiusAt(phi) {
+  let d = 0;
+  for (let k = 0; k < HOUSES; k++) {
+    const c = houseCurv[k];
+    if (!c) continue;
+    const del = phi - 2 * Math.PI * k / HOUSES;
+    d += c * KAPPA * -Math.sin(del) * Math.exp(KAPPA * (Math.cos(del) - 1));
+  }
+  return R * d;
+}
+function ray(phi) {
+  const rho = radiusAt(phi), dr = dRadiusAt(phi);
+  const c = Math.cos(phi), s = Math.sin(phi);
+  let nx = rho * c + dr * s, ny = rho * s - dr * c;
+  const nn = Math.hypot(nx, ny); nx /= nn; ny /= nn;
+  // Householder: u = d - 2(d·n)n mit d = (-1, 0)
+  const dn = -nx;
+  return {ox: rho * c, oy: rho * s, ux: -1 - 2 * dn * nx, uy: -2 * dn * ny};
+}
+function causticPoint(phi, h = 1e-4) {   // det ist LINEAR in s
+  const r0 = ray(phi);
+  const rho = radiusAt(phi), dr = dRadiusAt(phi);
+  const c = Math.cos(phi), s = Math.sin(phi);
+  const px = dr * c - rho * s, py = dr * s + rho * c;      // P'(φ)
+  const rp = ray(phi + h), rm = ray(phi - h);
+  const vx = (rp.ux - rm.ux) / (2 * h), vy = (rp.uy - rm.uy) / (2 * h); // u'(φ)
+  const den = vx * r0.uy - vy * r0.ux;
+  if (Math.abs(den) < 1e-9) return null;
+  const st = -(px * r0.uy - py * r0.ux) / den;
+  if (st < 0 || st > 2.2) return null;
+  return {x: r0.ox + st * r0.ux, y: r0.oy + st * r0.uy};
+}
+function boundaryAmp(phi) {
+  let re = 0, im = 0;
+  for (const w of waves) {
+    const arg = w.f * phi + w.th;
+    re += w.a * Math.cos(arg); im += w.a * Math.sin(arg);
+  }
+  return {re, im};
+}
+// Vorberechnete Strahlen + Randamplituden fuer den Frame
+let rayCache = [], ampCache = [];
+function prepareFrame() {
+  rayCache = []; ampCache = [];
+  for (let k = 0; k < RAYS; k++) {
+    const phi = 2 * Math.PI * k / RAYS;
+    rayCache.push(ray(phi));
+    ampCache.push(boundaryAmp(phi));
+  }
+}
+function intensityAt(px, py) {
+  const t2 = 2 * SIGMA * SIGMA;
+  let re = 0, im = 0;
+  for (let k = 0; k < RAYS; k++) {
+    const r = rayCache[k];
+    const rx = px - r.ox, ry = py - r.oy;
+    let s = rx * r.ux + ry * r.uy;
+    if (s < 0) s = 0;
+    const dx = rx - s * r.ux, dy = ry - s * r.uy;
+    const g = Math.exp(-(dx * dx + dy * dy) / t2);
+    re += ampCache[k].re * g;
+    im += ampCache[k].im * g;
+  }
+  return re * re + im * im;
+}
+function housesFromField(scale) {
+  const c = new Array(HOUSES).fill(0);
+  const tot = substance();
+  if (tot < 1e-12) return c;
+  for (const w of waves) c[(w.f - 1) % HOUSES] += scale * (w.a * w.a) / tot;
+  return c;
+}
+
+// ---------- Anregung ----------
+const BANDS = [2, 3, 4, 5];
+function reseed() {
+  waves = [];
+  const spread = +ui.spread.value;
+  for (const f of BANDS) {
+    for (let i = 0; i < 4; i++) {
+      waves.push({f, a: 0.9 + 0.2 * Math.random(),
+                  th: ((Math.random() - 0.5) * 2 * spread + 2 * Math.PI) % (2 * Math.PI)});
+    }
+  }
+  rHist.length = 0; bHist.length = 0;
+}
+function pulse() {
+  const f = BANDS[Math.floor(Math.random() * BANDS.length)];
+  waves.push({f, a: 1.0, th: Math.random() * 2 * Math.PI});
+}
+
+// ---------- Rendering ----------
+const cv = document.getElementById('field'), cx = cv.getContext('2d');
+const GRID = 96;
+const img = cx.createImageData(GRID, GRID);
+const off = document.createElement('canvas'); off.width = off.height = GRID;
+const offCx = off.getContext('2d');
+
+function colormap(t) { // 0..1 -> dunkles Magma-artiges Leuchten
+  t = Math.max(0, Math.min(1, t));
+  return [
+    Math.round(255 * Math.min(1, 2.4 * t * t + 0.3 * t)),
+    Math.round(255 * Math.max(0, 1.6 * t - 0.45)),
+    Math.round(255 * (0.25 * t + 1.4 * Math.max(0, t - 0.75)))
+  ];
+}
+
+const rHist = [], bHist = [];
+let paused = false, frame = 0;
+
+function draw() {
+  prepareFrame();
+  const maxR = Math.max(R, ...rayCache.map(r => Math.hypot(r.ox, r.oy)));
+  const ext = maxR * 1.02;
+
+  // Intensitaetsfeld auf GRID x GRID
+  let peak = 1e-12;
+  const vals = new Float32Array(GRID * GRID);
+  for (let i = 0; i < GRID; i++) {
+    for (let j = 0; j < GRID; j++) {
+      const x = -ext + 2 * ext * i / (GRID - 1);
+      const y = -ext + 2 * ext * j / (GRID - 1);
+      const rho = radiusAt(Math.atan2(y, x));
+      if (x * x + y * y > rho * rho * 0.985) continue;
+      const v = intensityAt(x, y);
+      vals[i * GRID + j] = v;
+      if (v > peak) peak = v;
+    }
+  }
+  // log-Skala: Kaustik-Kontrast
+  for (let i = 0; i < GRID; i++) {
+    for (let j = 0; j < GRID; j++) {
+      const t = Math.log1p(40 * vals[i * GRID + j] / peak) / Math.log1p(40);
+      const [r, g, b] = colormap(t);
+      const p = 4 * (j * GRID + i);       // Bild-y = Feld-y (unten +)
+      img.data[p] = r; img.data[p + 1] = g; img.data[p + 2] = b; img.data[p + 3] = 255;
+    }
+  }
+  offCx.putImageData(img, 0, 0);
+  cx.imageSmoothingEnabled = true;
+  cx.clearRect(0, 0, cv.width, cv.height);
+  cx.save();
+  cx.translate(cv.width / 2, cv.height / 2);
+  cx.scale(cv.width / (2 * ext), -cv.height / (2 * ext));
+  cx.drawImage(off, -ext, -ext, 2 * ext, 2 * ext);
+
+  const lw = 2 * ext / cv.width; // 1px in Weltkoordinaten
+
+  // Schale
+  cx.beginPath();
+  for (let k = 0; k <= 256; k++) {
+    const phi = 2 * Math.PI * k / 256, rho = radiusAt(phi);
+    const x = rho * Math.cos(phi), y = rho * Math.sin(phi);
+    k ? cx.lineTo(x, y) : cx.moveTo(x, y);
+  }
+  cx.strokeStyle = 'rgba(127,212,255,0.5)'; cx.lineWidth = 1.4 * lw; cx.stroke();
+
+  // Strahlen (optional)
+  if (ui.showRays.checked) {
+    cx.strokeStyle = 'rgba(127,212,255,0.10)'; cx.lineWidth = lw;
+    for (let k = 0; k < RAYS; k += 2) {
+      const r = rayCache[k];
+      cx.beginPath(); cx.moveTo(r.ox, r.oy);
+      cx.lineTo(r.ox + 1.6 * r.ux, r.oy + 1.6 * r.uy); cx.stroke();
+    }
+  }
+
+  // Kaustik-Linie (numerisch, gilt auch fuer gekruemmte Schale)
+  if (ui.showCaustic.checked) {
+    cx.strokeStyle = 'rgba(255,180,94,0.65)'; cx.lineWidth = lw; cx.beginPath();
+    let pen = false;
+    for (let k = 0; k <= 300; k++) {
+      const phi = Math.PI / 2 + Math.PI * k / 300 + 1e-3; // beleuchtete Innenwand
+      const p = causticPoint(phi);
+      if (!p) { pen = false; continue; }
+      pen ? cx.lineTo(p.x, p.y) : cx.moveTo(p.x, p.y);
+      pen = true;
+    }
+    cx.stroke();
+  }
+
+  // Messpunkt (Cusp der Nephroide)
+  cx.fillStyle = '#ffb45e';
+  cx.beginPath(); cx.arc(-R / 2, 0, 2.6 * lw, 0, 2 * Math.PI); cx.fill();
+  cx.restore();
+}
+
+function spark(canvas, hist, color) {
+  const c = canvas.getContext('2d');
+  c.clearRect(0, 0, canvas.width, canvas.height);
+  if (hist.length < 2) return;
+  const max = Math.max(...hist, 1e-9);
+  c.strokeStyle = color; c.lineWidth = 1.5; c.beginPath();
+  hist.forEach((v, i) => {
+    const x = i / (hist.length - 1) * (canvas.width - 4) + 2;
+    const y = canvas.height - 3 - (v / max) * (canvas.height - 8);
+    i ? c.lineTo(x, y) : c.moveTo(x, y);
+  });
+  c.stroke();
+}
+
+// ---------- UI ----------
+const ui = {};
+for (const id of ['k','w0','dt','hs','spread','breathe','showCaustic','showRays','auto']) {
+  ui[id] = document.getElementById(id);
+}
+const fmt = (x, d = 2) => (+x).toFixed(d);
+function syncLabels() {
+  document.getElementById('kVal').textContent = fmt(K, 1);
+  document.getElementById('wVal').textContent = fmt(OMEGA0, 2);
+  document.getElementById('dtVal').textContent = fmt(DT, 3);
+  document.getElementById('hVal').textContent = fmt(+ui.hs.value, 2);
+  document.getElementById('sVal').textContent = fmt(+ui.spread.value, 2);
+}
+ui.k.oninput = () => { K = +ui.k.value; syncLabels(); };
+ui.w0.oninput = () => { OMEGA0 = +ui.w0.value; syncLabels(); };
+ui.dt.oninput = () => { DT = +ui.dt.value; syncLabels(); };
+ui.hs.oninput = syncLabels;
+ui.spread.oninput = syncLabels;
+document.getElementById('reseed').onclick = reseed;
+document.getElementById('pulse').onclick = pulse;
+document.getElementById('pause').onclick = e => {
+  paused = !paused; e.target.textContent = paused ? 'Weiter' : 'Pause';
+};
+
+// ---------- Hauptschleife ----------
+function loop() {
+  if (!paused) {
+    tick(DT);
+    if (ui.auto.checked && frame % 240 === 120) pulse();
+    if (waves.length === 0 && ui.auto.checked) reseed();
+
+    houseCurv = ui.breathe.checked
+      ? housesFromField(+ui.hs.value)
+      : new Array(HOUSES).fill(+ui.hs.value / HOUSES);
+
+    const op = orderParameter();
+    prepareFrame();
+    const sub = substance();
+    const bright = sub > 1e-12 ? intensityAt(-R / 2, 0) / sub : 0;
+    rHist.push(op.r); bHist.push(bright);
+    if (rHist.length > 220) { rHist.shift(); bHist.shift(); }
+
+    document.getElementById('rVal').textContent = fmt(op.r, 3);
+    document.getElementById('bVal').textContent = fmt(bright, 1);
+
+    if (frame % 2 === 0) draw();
+    spark(document.getElementById('rSpark'), rHist, '#7fd4ff');
+    spark(document.getElementById('bSpark'), bHist, '#ffb45e');
+  }
+  frame++;
+  requestAnimationFrame(loop);
+}
+syncLabels();
+reseed();
+loop();
+</script>
+</body>
+</html>
