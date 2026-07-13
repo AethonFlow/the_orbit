@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0b0e14; }
+    @keyframes pulseRing {
+      0% { transform: scale(0.6); opacity: 0.55; }
+      100% { transform: scale(1.9); opacity: 0; }
+    }
+    @keyframes leakDrift {
+      0%, 100% { transform: translateX(-2px); opacity: 0.55; }
+      50% { transform: translateX(2px); opacity: 1; }
+    }
+  </style>
+<div style="background:#0b0e14; color:#f2f5f9; font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif; overflow-x:hidden;">
+
+  <nav style="position:fixed; top:0; left:0; right:0; z-index:50; display:flex; align-items:center; justify-content:space-between; padding:20px 32px; pointer-events:none;">
+    <div style="display:flex; align-items:center; gap:8px; pointer-events:auto;">
+      <div style="width:8px; height:8px; border-radius:50%; background:#ffb45e; box-shadow:0 0 10px 2px rgba(255,180,94,0.7);"></div>
+      <span style="font-size:15px; font-weight:600; letter-spacing:0.02em;">TheOrbit</span>
+    </div>
+    <a href="#hubs" style="pointer-events:auto; color:#aab3c0; font-size:13px; text-decoration:none; letter-spacing:0.02em;">Die drei Hubs</a>
+    <a href="/feld" id="feldLink" style="pointer-events:auto; color:#7fd4ff; font-size:13px; text-decoration:none; letter-spacing:0.02em; margin-left:18px;">Ins echte Feld &rarr;</a>
+  </nav>
+
+  <!-- 1. HERO -->
+  <section data-screen-label="Hero" style="position:relative; height:100vh; min-height:640px; width:100%; display:flex; align-items:center; justify-content:center; background:#0b0e14; overflow:hidden;">
+    <canvas
+      id="feldCanvas"
+      role="img"
+      aria-label="Ein dunkles Feld aus Lichtpunkten. Tippt man rhythmisch hinein, richten sich die Punkte aneinander aus und eine goldene Brennlinie leuchtet auf; lässt man los, verklingt das Leuchten wieder."
+      style="position:absolute; inset:0; width:100%; height:100%; cursor:crosshair; touch-action:none;"
+    ></canvas>
+
+    <div style="position:relative; z-index:2; pointer-events:none; display:flex; flex-direction:column; align-items:center; text-align:center; padding:0 24px; max-width:900px;">
+      <h1 style="font-size:clamp(32px,6vw,64px); font-weight:700; letter-spacing:-0.02em; line-height:1.08; margin:0 0 14px;">
+        Wir messen den Tanz,<br/>nicht die T&auml;nzer.
+      </h1>
+      <p style="font-size:clamp(14px,1.6vw,19px); color:#7fd4ff; letter-spacing:0.01em; margin:0 0 46px; font-weight:400;">
+        Find your shared rhythm &mdash; no words needed.
+      </p>
+
+      <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+        <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; font-size:13px; color:#6b7684; letter-spacing:0.04em;">ORDNUNGSPARAMETER</div>
+        <div style="display:flex; align-items:baseline; gap:6px; font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace;">
+          <span style="font-size:15px; color:#aab3c0;">r(t) =</span>
+          <span id="rVal" style="font-size:28px; font-weight:600; color:#ffb45e; min-width:74px; text-align:left;">0.000</span>
+        </div>
+        <div style="width:200px; height:3px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden; margin-top:4px;">
+          <div id="rBar" style="height:100%; width:0%; background:#ffb45e; box-shadow:0 0 8px 1px rgba(255,180,94,0.8);"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="position:absolute; bottom:36px; left:0; right:0; z-index:2; text-align:center; pointer-events:none;">
+      <span style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; font-size:12px; letter-spacing:0.05em; color:#6b7684;">
+        klopf an &ndash; irgendein Rhythmus gen&uuml;gt
+      </span>
+    </div>
+  </section>
+
+  <!-- 2. SO FUNKTIONIERT ES -->
+  <section data-screen-label="So funktioniert es" style="background:#0b0e14; padding:120px 24px; border-top:1px solid rgba(255,255,255,0.06);">
+    <div style="max-width:1080px; margin:0 auto;">
+      <h2 style="font-size:clamp(24px,3vw,36px); font-weight:700; letter-spacing:-0.01em; margin:0 0 64px; text-align:center;">So funktioniert es</h2>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:56px;">
+
+        <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:20px;">
+          <div style="position:relative; width:72px; height:72px; display:flex; align-items:center; justify-content:center;">
+            <div style="position:absolute; width:72px; height:72px; border-radius:50%; border:1.5px solid #7fd4ff; animation:pulseRing 2.2s ease-out infinite;"></div>
+            <div style="position:absolute; width:72px; height:72px; border-radius:50%; border:1.5px solid #7fd4ff; animation:pulseRing 2.2s ease-out infinite; animation-delay:0.7s;"></div>
+            <div style="width:14px; height:14px; border-radius:50%; background:#7fd4ff; box-shadow:0 0 12px 2px rgba(127,212,255,0.7);"></div>
+          </div>
+          <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; font-size:12px; color:#6b7684; letter-spacing:0.08em;">01</div>
+          <h3 style="font-size:19px; font-weight:600; margin:0;">Klopfen</h3>
+          <p style="font-size:15px; line-height:1.6; color:#aab3c0; margin:0; max-width:280px;">Tippen oder Summen speist das gemeinsame Feld mit Rhythmus &mdash; jeder Strom ein eigener Oszillator.</p>
+        </div>
+
+        <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:20px;">
+          <div style="position:relative; width:72px; height:72px; display:flex; align-items:center; justify-content:center;">
+            <div style="width:72px; height:72px; border-radius:50%; border:1.5px solid rgba(255,180,94,0.5); position:relative; overflow:hidden;">
+              <div style="position:absolute; top:0; left:50%; width:2px; height:100%; background:#ffb45e; transform:translateX(-50%); animation:leakDrift 2.4s ease-in-out infinite;"></div>
+            </div>
+          </div>
+          <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; font-size:12px; color:#6b7684; letter-spacing:0.08em;">02</div>
+          <h3 style="font-size:19px; font-weight:600; margin:0;">Membran</h3>
+          <p style="font-size:15px; line-height:1.6; color:#aab3c0; margin:0; max-width:280px;">Nach Resonanz &ouml;ffnet sich ein Einlass &mdash; mit einem schmalen Neugier-Leckstrom, der vorab etwas durchl&auml;sst.</p>
+        </div>
+
+        <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:20px;">
+          <div style="width:72px; height:72px; border-radius:50%; background:radial-gradient(circle,rgba(255,180,94,0.9),rgba(255,180,94,0.05) 70%); box-shadow:0 0 34px 6px rgba(255,180,94,0.45);"></div>
+          <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; font-size:12px; color:#6b7684; letter-spacing:0.08em;">03</div>
+          <h3 style="font-size:19px; font-weight:600; margin:0;">Leuchten</h3>
+          <p style="font-size:15px; line-height:1.6; color:#aab3c0; margin:0; max-width:280px;">Synchronisieren sich die Str&ouml;me, steigt r(t) &mdash; und die Brennlinie wird sichtbar. Nicht berechnet. Emergiert.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. DREI HUBS -->
+  <section id="hubs" data-screen-label="Drei Hubs" style="background:#0e1220; padding:120px 24px; border-top:1px solid rgba(255,255,255,0.06);">
+    <div style="max-width:1080px; margin:0 auto;">
+      <h2 style="font-size:clamp(24px,3vw,36px); font-weight:700; letter-spacing:-0.01em; margin:0 0 12px; text-align:center;">Drei Knoten. Ein Feld.</h2>
+      <p style="text-align:center; color:#aab3c0; font-size:16px; max-width:560px; margin:0 auto 64px;">Keine Weltkarte, keine B&uuml;ros &mdash; drei Ausbuchtungen auf derselben Kreis-Schale, verbunden durch das Feld in der Mitte.</p>
+
+      <svg viewBox="0 0 600 340" style="width:100%; max-width:560px; display:block; margin:0 auto 56px;">
+        <circle cx="300" cy="170" r="150" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="1.5"></circle>
+        <line x1="300" y1="170" x2="300" y2="30" stroke="rgba(255,180,94,0.35)" stroke-width="1.5"></line>
+        <line x1="300" y1="170" x2="177" y2="245" stroke="rgba(127,212,255,0.35)" stroke-width="1.5"></line>
+        <line x1="300" y1="170" x2="423" y2="245" stroke="rgba(183,155,255,0.35)" stroke-width="1.5"></line>
+        <circle cx="300" cy="170" r="10" fill="#f2f5f9" opacity="0.8"></circle>
+        <circle cx="300" cy="30" r="30" fill="rgba(255,180,94,0.18)" stroke="#ffb45e" stroke-width="2"></circle>
+        <circle cx="177" cy="245" r="30" fill="rgba(127,212,255,0.18)" stroke="#7fd4ff" stroke-width="2"></circle>
+        <circle cx="423" cy="245" r="30" fill="rgba(183,155,255,0.18)" stroke="#b79bff" stroke-width="2"></circle>
+      </svg>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:32px;">
+        <div style="border-top:2px solid #ffb45e; padding-top:20px;">
+          <h3 style="font-size:19px; font-weight:600; margin:0 0 4px; color:#ffb45e;">Valencia</h3>
+          <div style="font-size:14px; color:#aab3c0; margin-bottom:14px;">Resonanzzentrum</div>
+          <p style="font-size:14px; line-height:1.7; color:#8b94a1; margin:0;">Menschlichkeit &middot; Kultur &middot; Retreats &middot; Salons</p>
+        </div>
+        <div style="border-top:2px solid #7fd4ff; padding-top:20px;">
+          <h3 style="font-size:19px; font-weight:600; margin:0 0 4px; color:#7fd4ff;">Seattle</h3>
+          <div style="font-size:14px; color:#aab3c0; margin-bottom:14px;">Erkenntnisschmiede</div>
+          <p style="font-size:14px; line-height:1.7; color:#8b94a1; margin:0;">Forschung &middot; KI &middot; Universit&auml;ten &middot; Modelle</p>
+        </div>
+        <div style="border-top:2px solid #b79bff; padding-top:20px;">
+          <h3 style="font-size:19px; font-weight:600; margin:0 0 4px; color:#b79bff;">Shanghai</h3>
+          <div style="font-size:14px; color:#aab3c0; margin-bottom:14px;">Zukunftslabor</div>
+          <p style="font-size:14px; line-height:1.7; color:#8b94a1; margin:0;">Hardware &middot; Robotik &middot; Skalierung &middot; Produktion</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. DAS FELD SCHLAEFT NIE -->
+  <section data-screen-label="24h Staffellauf" style="background:#0b0e14; padding:120px 24px; border-top:1px solid rgba(255,255,255,0.06);">
+    <div style="max-width:900px; margin:0 auto;">
+      <h2 style="font-size:clamp(24px,3vw,36px); font-weight:700; letter-spacing:-0.01em; margin:0 0 12px; text-align:center;">Das Feld schl&auml;ft nie</h2>
+      <p style="text-align:center; color:#aab3c0; font-size:16px; margin:0 auto 56px; max-width:560px;">Ein 24-Stunden-Staffellauf der Koh&auml;renz &mdash; von Europa nach Seattle nach Shanghai und zur&uuml;ck.</p>
+
+      <div style="position:relative; height:66px; border-radius:6px; overflow:hidden;">
+        <div style="position:relative; height:18px; margin-bottom:3px; background:rgba(255,255,255,0.04); border-radius:3px; overflow:hidden;">
+          <div style="position:absolute; top:0; bottom:0; left:20.8%; width:66.7%; background:rgba(255,180,94,0.55);"></div>
+        </div>
+        <div style="position:relative; height:18px; margin-bottom:3px; background:rgba(255,255,255,0.04); border-radius:3px; overflow:hidden;">
+          <div style="position:absolute; top:0; bottom:0; left:58.3%; width:41.7%; background:rgba(127,212,255,0.55);"></div>
+          <div style="position:absolute; top:0; bottom:0; left:0%; width:25%; background:rgba(127,212,255,0.55);"></div>
+        </div>
+        <div style="position:relative; height:18px; background:rgba(255,255,255,0.04); border-radius:3px; overflow:hidden;">
+          <div style="position:absolute; top:0; bottom:0; left:95.8%; width:4.2%; background:rgba(183,155,255,0.55);"></div>
+          <div style="position:absolute; top:0; bottom:0; left:0%; width:62.5%; background:rgba(183,155,255,0.55);"></div>
+        </div>
+        <div id="nowMarker" style="position:absolute; top:-4px; bottom:-4px; width:2px; background:#f2f5f9; box-shadow:0 0 8px 2px rgba(242,245,249,0.8); left:50%;"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; font-size:11px; color:#6b7684; margin-top:8px;">
+        <span>00:00 UTC</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
+      </div>
+
+      <div style="display:flex; gap:28px; margin-top:32px; flex-wrap:wrap; justify-content:center;">
+        <div style="display:flex; align-items:center; gap:8px;"><div style="width:10px; height:10px; border-radius:2px; background:#ffb45e;"></div><span style="font-size:13px; color:#aab3c0;">Valencia</span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><div style="width:10px; height:10px; border-radius:2px; background:#7fd4ff;"></div><span style="font-size:13px; color:#aab3c0;">Seattle</span></div>
+        <div style="display:flex; align-items:center; gap:8px;"><div style="width:10px; height:10px; border-radius:2px; background:#b79bff;"></div><span style="font-size:13px; color:#aab3c0;">Shanghai</span></div>
+      </div>
+      <div id="utcClock" style="text-align:center; margin-top:20px; font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; font-size:13px; color:#6b7684;">&nbsp;</div>
+    </div>
+  </section>
+
+  <!-- 5. START IM DISSENS -->
+  <section data-screen-label="Start im Dissens" style="background:#0e1220; padding:120px 24px; border-top:1px solid rgba(255,255,255,0.06);">
+    <div style="max-width:760px; margin:0 auto; text-align:center;">
+      <h2 style="font-size:clamp(24px,3vw,36px); font-weight:700; letter-spacing:-0.01em; margin:0 0 24px;">Start im Dissens</h2>
+      <p style="font-size:16px; line-height:1.75; color:#aab3c0; margin:0 0 48px;">
+        Jede Gruppe beginnt gegenphasig &mdash; dunkel, gespannt, ohne Ordnung. Ohne Absprache, ohne Anleitung findet sie in den gemeinsamen Takt. Was bleibt: die geteilte r(t)-Kurve dieses einen Abends.
+      </p>
+      <svg viewBox="0 0 400 110" style="width:100%; max-width:420px; display:block; margin:0 auto;">
+        <polyline points="0,86 18,64 36,90 54,58 72,92 90,52 108,74 126,42 144,64 162,32 180,48 198,22 216,34 234,16 252,24 270,12 288,16 306,9 324,11 342,7 360,8 378,6 400,6"
+          fill="none" stroke="#ffb45e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+          id="rCurve" style="stroke-dasharray:900; stroke-dashoffset:900; transition:stroke-dashoffset 2.2s ease-out;"></polyline>
+      </svg>
+      <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; font-size:12px; color:#6b7684; margin-top:12px; letter-spacing:0.04em;">
+        geteilte r(t)-Kurve &mdash; ein Andenken
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. FOOTER / CTA -->
+  <section data-screen-label="Footer CTA" style="background:#0b0e14; padding:120px 24px 64px; border-top:1px solid rgba(255,255,255,0.06);">
+    <div style="max-width:640px; margin:0 auto; text-align:center;">
+      <h2 style="font-size:clamp(24px,3vw,34px); font-weight:700; letter-spacing:-0.01em; margin:0 0 20px;">Open Source. Open Field.</h2>
+      <p style="font-size:15px; line-height:1.7; color:#aab3c0; margin:0 0 40px;">
+        Der Code und die Betriebsanleitung liegen offen. Wer will, baut das Feld nach &mdash; oder kommt vorbei.
+      </p>
+
+      <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-bottom:56px;">
+        <a href="https://github.com/AETHON/the_orbit" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:8px; padding:13px 24px; border-radius:8px; background:#f2f5f9; color:#0b0e14; text-decoration:none; font-size:14px; font-weight:600;">
+          Zum Repository ↗
+        </a>
+        <a href="mailto:salon@theorbit.example?subject=Einladung%20Salon%20Valencia" style="display:inline-flex; align-items:center; gap:8px; padding:13px 24px; border-radius:8px; border:1px solid rgba(255,255,255,0.18); color:#f2f5f9; text-decoration:none; font-size:14px; font-weight:600;">
+          Einladung anfragen ↗
+        </a>
+      </div>
+
+      <div style="font-size:13px; color:#6b7684; margin-bottom:6px;">Betriebsanleitung im Repo.</div>
+      <div style="font-size:13px; color:#6b7684; margin-bottom:40px;">Erster Salon in Valencia &mdash; Einladung auf Anfrage.</div>
+
+      <div style="font-size:12px; color:#4b5462; border-top:1px solid rgba(255,255,255,0.06); padding-top:24px;">
+        Keine Cookies. Kein Tracking. Kein Konto n&ouml;tig. &mdash; TheOrbit
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+'use strict';
+// ---------------------------------------------------------------------
+// Der Hero ist eine ECHTE Mini-Instanz der Feldphysik (kein Fake):
+//   Kuramoto:    theta' = omega + K*Z*sin(psi - theta)
+//   Dissipation: a *= exp(-2*dt)
+//   Kaustik:     Einhuellende der reflektierten Strahlen,
+//                p*(phi) = P(phi) + s*(phi)*u(phi), s* = -R*cos(phi)/2
+// Ehrlichkeit der Injektion: die Phase eines Klopfens kommt aus seinem
+// ZEITPUNKT (1-Hz-Zyklus). Nur rhythmisches Klopfen erzeugt gleiche
+// Phasen und damit Kohaerenz - zufaelliges Klopfen bleibt inkohaerent.
+// ---------------------------------------------------------------------
+(function () {
+  const canvas = document.getElementById('feldCanvas');
+  const rEl = document.getElementById('rVal');
+  const rBar = document.getElementById('rBar');
+  const nowMarker = document.getElementById('nowMarker');
+  const utcClock = document.getElementById('utcClock');
+  const curveEl = document.getElementById('rCurve');
+  const feldLink = document.getElementById('feldLink');
+  if (feldLink && location.protocol === 'file:') feldLink.style.display = 'none';
+
+  const N = 48, K = 2.4;
+  let oscillators = [], rDisplay = 0, psi = 0;
+  let lastTime = null, visible = true;
+
+  function initSim() {
+    oscillators = [];
+    for (let i = 0; i < N; i++) {
+      oscillators.push({
+        angle: i / N * 2 * Math.PI,
+        theta: Math.random() * 2 * Math.PI,
+        omega: (Math.random() - 0.5) * 0.5,
+        a: 0.01 + Math.random() * 0.02
+      });
+    }
+  }
+
+  function knock(clickAngle) {
+    const thetaInj = 2 * Math.PI * ((performance.now() / 1000) % 1);
+    oscillators.forEach((o) => {
+      const d = Math.abs(((o.angle - clickAngle + Math.PI) % (2 * Math.PI)) - Math.PI);
+      if (d >= 0.9) return;
+      const w = 0.8 * (1 - d / 0.9);
+      // Zeiger-Addition statt hartem Setzen: das Feld behaelt sein Gedaechtnis
+      const mx = o.a * Math.cos(o.theta) + w * Math.cos(thetaInj);
+      const my = o.a * Math.sin(o.theta) + w * Math.sin(thetaInj);
+      o.theta = Math.atan2(my, mx);
+      o.a = Math.min(1, o.a + w);
+    });
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    knock(Math.atan2(y, x));
+  });
+  let keyAngle = 0;
+  window.addEventListener('keydown', (e) => {
+    if (e.repeat) return;
+    keyAngle += 2.399963;  // goldener Winkel: Anschlaege verteilen sich
+    knock(keyAngle);
+  });
+
+  function step(dt) {
+    let sx = 0, sy = 0, sa = 0;
+    oscillators.forEach((o) => {
+      sx += o.a * Math.cos(o.theta);
+      sy += o.a * Math.sin(o.theta);
+      sa += o.a;
+    });
+    const Z = sa > 0.001 ? Math.hypot(sx, sy) / sa : 0;
+    psi = Math.atan2(sy, sx);
+    rDisplay = rDisplay * 0.9 + Z * 0.1;  // Glaettung NUR fuer die Anzeige
+    oscillators.forEach((o) => {
+      o.theta += (o.omega + K * Z * Math.sin(psi - o.theta)) * dt;
+      o.a *= Math.exp(-2 * dt);
+    });
+    if (rEl) rEl.textContent = rDisplay.toFixed(3);
+    if (rBar) rBar.style.width = Math.min(100, rDisplay * 100).toFixed(1) + '%';
+  }
+
+  function draw() {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const dpr = window.devicePixelRatio || 1;
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    const R = Math.min(w, h) * 0.30;
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1 * dpr;
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, 2 * Math.PI); ctx.stroke();
+
+    // Strahlen: Licht d = (-1,0), Householder-Reflexion -> u = (cos2phi, sin2phi)
+    ctx.lineWidth = 1.4 * dpr;
+    oscillators.forEach((o) => {
+      const phi = o.angle;
+      const bright = o.a * Math.max(0, Math.cos(o.theta - psi));
+      const alpha = Math.min(1, bright * 1.4) * 0.9;
+      if (alpha < 0.02) return;
+      const px = R * Math.cos(phi), py = R * Math.sin(phi);
+      const ux = Math.cos(2 * phi), uy = Math.sin(2 * phi);
+      ctx.strokeStyle = 'rgba(255,180,94,' + alpha + ')';
+      ctx.shadowColor = 'rgba(255,180,94,0.8)';
+      ctx.shadowBlur = 8 * rDisplay * dpr;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(px + ux * R * 1.8, py + uy * R * 1.8);
+      ctx.stroke();
+    });
+
+    // Die wahre Kaustik: Einhuellende genau dieser Strahlen (Nephroide,
+    // Cusp bei (-R/2, 0)) - Helligkeit waechst mit der Kohaerenz.
+    ctx.shadowBlur = 20 * dpr * rDisplay;
+    ctx.shadowColor = 'rgba(255,180,94,0.9)';
+    ctx.strokeStyle = 'rgba(255,180,94,' + (0.15 + 0.75 * rDisplay) + ')';
+    ctx.lineWidth = 2 * dpr;
+    ctx.beginPath();
+    for (let i = 0; i <= 120; i++) {
+      const phi = Math.PI / 2 + (i / 120) * Math.PI + 1e-3;
+      const s = -R * Math.cos(phi) / 2;
+      const x = R * Math.cos(phi) + s * Math.cos(2 * phi);
+      const y = R * Math.sin(phi) + s * Math.sin(2 * phi);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    oscillators.forEach((o) => {
+      const x = R * Math.cos(o.angle), y = R * Math.sin(o.angle);
+      const glow = 0.2 + 0.8 * o.a;
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(127,212,255,' + (0.25 + 0.5 * glow) + ')';
+      ctx.arc(x, y, 2.2 * dpr, 0, 2 * Math.PI);
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  function handleResize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, rect.width * dpr);
+    canvas.height = Math.max(1, rect.height * dpr);
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+  }
+  window.addEventListener('resize', handleResize);
+
+  new IntersectionObserver((entries) => {
+    visible = entries[0].isIntersecting;
+  }, { threshold: 0.05 }).observe(canvas);
+
+  if (curveEl) {
+    const obs = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        curveEl.style.strokeDashoffset = '0';
+        obs.disconnect();
+      }
+    }, { threshold: 0.4 });
+    obs.observe(curveEl);
+  }
+
+  function updateClock() {
+    if (!utcClock || !nowMarker) return;
+    const now = new Date();
+    const h = now.getUTCHours() + now.getUTCMinutes() / 60;
+    utcClock.textContent = now.toUTCString().slice(17, 22) + ' UTC \u2014 gerade jetzt aktiv';
+    nowMarker.style.left = (h / 24 * 100) + '%';
+  }
+  setInterval(updateClock, 30000);
+  updateClock();
+
+  function loop() {
+    requestAnimationFrame(loop);
+    const now = performance.now();
+    if (lastTime == null) lastTime = now;
+    let dt = (now - lastTime) / 1000;
+    if (dt < 1 / 30) return;   // max ~30 fps
+    lastTime = now;
+    dt = Math.min(dt, 0.1);
+    if (!visible) return;
+    step(dt);
+    draw();
+  }
+
+  initSim();
+  handleResize();
+  loop();
+})();
+</script>
+</body>
+</html>

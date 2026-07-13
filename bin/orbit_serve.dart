@@ -165,7 +165,12 @@ void main() async {
   // ---------------------------------------------------------------------
   // HTTP: eine Seite, ein WebSocket.
   // ---------------------------------------------------------------------
-  final html = _loadHtml();
+  // '/' traegt die Landingpage (Schaufenster), '/feld' das lebende Feld.
+  final liveHtml = _loadHtml('web/orbit_live.html') ??
+      '<h1>web/orbit_live.html nicht gefunden</h1>'
+          '<p>Bitte den Server aus dem Repo-Wurzelverzeichnis starten: '
+          '<code>dart run bin/orbit_serve.dart</code></p>';
+  final landingHtml = _loadHtml('web/landing.html');
   // anyIPv4: auch Geräte im selben (Heim-)Netz dürfen ans Feld -
   // Handy/Tablet können mittippen. Windows fragt beim ersten Start
   // einmal nach der Firewall-Freigabe ("privates Netzwerk" genügt).
@@ -193,18 +198,18 @@ void main() async {
     } else {
       request.response.headers.contentType =
           ContentType('text', 'html', charset: 'utf-8');
-      request.response.write(html);
+      request.response.write(request.uri.path == '/feld'
+          ? liveHtml
+          : (landingHtml ?? liveHtml));
       await request.response.close();
     }
   }
 }
 
-String _loadHtml() {
-  for (final path in ['web/orbit_live.html', '../web/orbit_live.html']) {
+String? _loadHtml(String relativePath) {
+  for (final path in [relativePath, '../' + relativePath]) {
     final file = File(path);
     if (file.existsSync()) return file.readAsStringSync();
   }
-  return '<h1>web/orbit_live.html nicht gefunden</h1>'
-      '<p>Bitte den Server aus dem Repo-Wurzelverzeichnis starten:'
-      ' <code>dart run bin/orbit_serve.dart</code></p>';
+  return null;
 }
