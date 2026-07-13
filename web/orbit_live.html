@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>TheOrbit — lebendes Feld</title>
+<title>TheOrbit — living field</title>
 <!--
   Die Netzhaut des Prototyps. KEINE Physik in dieser Datei:
   der Feldzustand kommt bei jedem Tick per WebSocket aus der echten
@@ -55,45 +55,45 @@
 </style>
 </head>
 <body>
-<h1>The<span>Orbit</span> · lebendes Feld</h1>
-<div class="sub">echte Dart-Engine · Browser ist nur Auge und Ohr — tippe irgendwo, oder gib ihm deine Stimme</div>
+<h1>The<span>Orbit</span> · living field</h1>
+<div class="sub">the real Dart engine · your browser is only eye and ear — type anywhere, or lend it your voice</div>
 
 <div class="wrap">
   <canvas id="field" class="field" width="540" height="540"></canvas>
 
   <div class="panel">
-    <div class="status"><span class="dot" id="dot"></span><span id="status">verbinde …</span></div>
+    <div class="status"><span class="dot" id="dot"></span><span id="status">connecting …</span></div>
 
-    <div class="metric"><span>r(t) — Kohärenz</span><span class="v" id="rVal">–</span></div>
+    <div class="metric"><span>r(t) — coherence</span><span class="v" id="rVal">–</span></div>
     <canvas id="rSpark" class="spark" width="288" height="44"></canvas>
 
-    <div class="metric"><span>Kaustik am Cusp</span><span class="v" id="bVal">–</span></div>
+    <div class="metric"><span>Caustic at the cusp</span><span class="v" id="bVal">–</span></div>
     <canvas id="bSpark" class="spark" width="288" height="44"></canvas>
 
-    <div class="metric"><span>letzter Einlass T</span><span class="v" id="tVal">–</span></div>
+    <div class="metric"><span>last admission T</span><span class="v" id="tVal">–</span></div>
 
-    <h2>Die 8 Häuser</h2>
+    <h2>The 8 houses</h2>
     <div class="houses" id="houses"></div>
     <div class="hlabel"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
 
-    <h2>Ströme</h2>
-    <button id="micBtn">🎤 Mikrofon öffnen (Summen / Pfeifen)</button>
-    <label>Häuser-Atmung <b id="hsVal">0.15</b></label>
+    <h2>Streams</h2>
+    <button id="micBtn">🎤 Open microphone (hum / whistle)</button>
+    <label>House breathing <b id="hsVal">0.15</b></label>
     <input type="range" id="hs" min="0" max="0.3" step="0.01" value="0.15">
 
     <h2>Session</h2>
     <div style="display:flex; gap:8px;">
-      <button id="dissentBtn" title="Gegenphasen-Start: dunkel, gespannt — findet heraus">Start im Dissens</button>
-      <button id="memoryBtn" title="Die r(t)-Kurve dieser Session als Bild">Orbit-Memory &darr;</button>
+      <button id="dissentBtn" title="Antiphase start: dark, tense — find your way out">Start in dissent</button>
+      <button id="memoryBtn" title="This session's r(t) curve as an image">Orbit memory &darr;</button>
     </div>
 
     <div class="hint">
-      <b>Tippen:</b> dein Tempo wählt das Haus (≈1 Anschlag/s → Haus 1,
-      ≈4/s → Haus 4), Gleichmäßigkeit = Stärke.<br>
-      <b>Stimme:</b> die Häuser sind die Obertonreihe von 110 Hz —
-      ein gesummter Ton lässt seine Harmonischen einströmen.<br>
-      Gleichphasig strömt (T→100%), Dissonantes bleibt draußen —
-      bis auf den Neugier-Leckstrom.
+      <b>Typing:</b> your tempo picks the house (≈1 stroke/s → house 1,
+      ≈4/s → house 4); regularity = strength.<br>
+      <b>Voice:</b> the houses are the harmonic series of 110 Hz —
+      a hummed note streams in through its harmonics.<br>
+      In phase flows in (T→100%); dissonance stays outside —
+      except for the curiosity leak.
     </div>
   </div>
 </div>
@@ -114,8 +114,8 @@ function connect() {
   // wss hinter https (z.B. Cloudflare Tunnel), ws lokal.
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}/ws`);
-  ws.onopen = () => { dot.classList.add('on'); statusEl.textContent = 'verbunden mit der Engine'; };
-  ws.onclose = () => { dot.classList.remove('on'); statusEl.textContent = 'getrennt — Server läuft?'; setTimeout(connect, 1500); };
+  ws.onopen = () => { dot.classList.add('on'); statusEl.textContent = 'connected to the engine'; };
+  ws.onclose = () => { dot.classList.remove('on'); statusEl.textContent = 'disconnected — is the server running?'; setTimeout(connect, 1500); };
   ws.onmessage = (e) => {
     const m = JSON.parse(e.data);
     waves = m.waves; houses = m.houses;
@@ -143,7 +143,7 @@ let audioCtx = null;
 micBtn.onclick = async () => {
   if (audioCtx) { audioCtx.close(); audioCtx = null;
     micBtn.classList.remove('active');
-    micBtn.textContent = '🎤 Mikrofon öffnen (Summen / Pfeifen)'; return; }
+    micBtn.textContent = '🎤 Open microphone (hum / whistle)'; return; }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     audioCtx = new AudioContext();
@@ -160,9 +160,9 @@ micBtn.onclick = async () => {
       send({ type: 'audio', rate: audioCtx.sampleRate / decimate, samples: out });
     };
     micBtn.classList.add('active');
-    micBtn.textContent = '🎤 Mikrofon schließen';
+    micBtn.textContent = '🎤 Close microphone';
   } catch (err) {
-    statusEl.textContent = 'Mikrofon verweigert: ' + err.name;
+    statusEl.textContent = 'Microphone denied: ' + err.name;
   }
 };
 
@@ -189,7 +189,7 @@ document.getElementById('memoryBtn').onclick = () => {
     '<line x1="' + P + '" y1="' + (H - P) + '" x2="' + (W - P) + '" y2="' + (H - P) + '" stroke="#232b3d"/>' +
     '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#ffb45e" stroke-width="2"/>' +
     '<text x="' + P + '" y="26" fill="#cfd8e3" font-family="monospace" font-size="14">TheOrbit \u00b7 Orbit-Memory \u00b7 r(t) \u00b7 ' + when + ' UTC</text>' +
-    '<text x="' + P + '" y="' + (H - 14) + '" fill="#7a8699" font-family="monospace" font-size="11">Wir messen den Tanz, nicht die T\u00e4nzer.</text>' +
+    '<text x="' + P + '" y="' + (H - 14) + '" fill="#7a8699" font-family="monospace" font-size="11">We measure the dance, not the dancers.</text>' +
     '</svg>';
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));

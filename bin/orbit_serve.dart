@@ -189,26 +189,26 @@ void main() async {
   // ---------------------------------------------------------------------
   // '/' traegt die Landingpage (Schaufenster), '/feld' das lebende Feld.
   final liveHtml = _loadHtml('web/orbit_live.html') ??
-      '<h1>web/orbit_live.html nicht gefunden</h1>'
-          '<p>Bitte den Server aus dem Repo-Wurzelverzeichnis starten: '
+      '<h1>web/orbit_live.html not found</h1>'
+          '<p>Please start the server from the repository root: '
           '<code>dart run bin/orbit_serve.dart</code></p>';
   final landingHtml = _loadHtml('web/landing.html');
   // anyIPv4: auch Geräte im selben (Heim-)Netz dürfen ans Feld -
   // Handy/Tablet können mittippen. Windows fragt beim ersten Start
   // einmal nach der Firewall-Freigabe ("privates Netzwerk" genügt).
   final server = await HttpServer.bind(InternetAddress.anyIPv4, port);
-  print('TheOrbit lebt: http://localhost:$port  (Strg+C beendet)');
+  print('TheOrbit is alive: http://localhost:$port  (Ctrl+C to stop)');
   try {
     final interfaces =
         await NetworkInterface.list(type: InternetAddressType.IPv4);
     for (final ni in interfaces) {
       for (final addr in ni.addresses) {
-        print('  im Heimnetz:  http://${addr.address}:$port  (${ni.name})');
+        print('  on your LAN:  http://${addr.address}:$port  (${ni.name})');
       }
     }
   } catch (_) {/* Netzliste ist Komfort, kein Muss */}
-  print('  Hinweis: Mikrofon erlauben Browser nur auf localhost oder'
-      ' https - vom Handy aus fließt der Tipp-Strom, die Stimme nicht.');
+  print('  Note: browsers allow the microphone only on localhost or'
+      ' https - from other devices the typing stream flows, voice does not.');
 
   await for (final request in server) {
     if (request.uri.path == '/ws') {

@@ -57,8 +57,8 @@ void main() async {
     stdin.echoMode = false;
     stdin.lineMode = false;
   } on StdinException {
-    stderr.writeln('Kein interaktives Terminal - bitte direkt in einer '
-        'Konsole starten.');
+    stderr.writeln('No interactive terminal - please run directly '
+        'in a console.');
     exit(1);
   }
 
@@ -75,7 +75,7 @@ void main() async {
     loop?.cancel();
     keys?.cancel();
     restoreTerminal();
-    stdout.writeln('\nDas Feld verklingt. (${knockCount}x geklopft)');
+    stdout.writeln('\nThe field fades. (${knockCount} knocks)');
     exit(0);
   }
 
@@ -183,28 +183,28 @@ void render(
 
   final b = StringBuffer('\x1B[H');
   b.writeln('╔══════════════════════════════════════════════════════════╗');
-  b.writeln('║  TheOrbit · lebender Prototyp — tippe, das Feld hört zu  ║');
+  b.writeln('║  TheOrbit · living prototype — type, the field listens   ║');
   b.writeln('╚══════════════════════════════════════════════════════════╝');
   b.writeln();
-  b.writeln('  r(t) Kohärenz   │${bar(r)}│ ${r.toStringAsFixed(3)}');
-  b.writeln('  Kaustik am Cusp │${bar(brightNorm)}│ '
+  b.writeln('  r(t) coherence  │${bar(r)}│ ${r.toStringAsFixed(3)}');
+  b.writeln('  Caustic at cusp │${bar(brightNorm)}│ '
       '${brightness.toStringAsFixed(1)}');
-  b.writeln('  Substanz Σa²    │${bar(math.min(1.0, substance))}│ '
+  b.writeln('  Substance Σa²   │${bar(math.min(1.0, substance))}│ '
       '${substance.toStringAsFixed(3)}');
   b.writeln();
-  b.writeln('  r(t) Verlauf    ${sparkline(rHistory)}');
+  b.writeln('  r(t) history    ${sparkline(rHistory)}');
   b.writeln();
-  b.writeln('  Die 8 Häuser (Band-Substanz):');
+  b.writeln('  The 8 houses (band substance):');
   for (int h = 0; h < 8; h++) {
     final level = math.min(1.0, math.sqrt(bandLevel[h]));
-    b.writeln('    Haus ${h + 1} (f=${h + 1}) │${bar(level, width: 20)}│');
+    b.writeln('    House ${h + 1} (f=${h + 1}) │${bar(level, width: 20)}│');
   }
   b.writeln();
-  b.writeln('  letzter Einlass T = ${(lastTransmission * 100).round()}%'
-      '   ·   ${knockCount}x geklopft   ·   '
-      '${cluster.activeWavesCount} Wellen aktiv');
+  b.writeln('  last admission T = ${(lastTransmission * 100).round()}%'
+      '   ·   ${knockCount} knocks   ·   '
+      '${cluster.activeWavesCount} waves active');
   b.writeln();
-  b.writeln('  Dein Tempo wählt das Haus (≈1/s → Haus 1, ≈4/s → Haus 4).');
-  b.writeln('  Gleichmäßig = kräftiger Einlass. q = beenden.  \x1B[0J');
+  b.writeln('  Your tempo picks the house (≈1/s → house 1, ≈4/s → house 4).');
+  b.writeln('  Steady rhythm = stronger admission. q = quit.  \x1B[0J');
   stdout.write(b);
 }

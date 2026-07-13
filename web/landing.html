@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -24,8 +24,8 @@
       <div style="width:8px; height:8px; border-radius:50%; background:#ffb45e; box-shadow:0 0 10px 2px rgba(255,180,94,0.7);"></div>
       <span style="font-size:15px; font-weight:600; letter-spacing:0.02em;">TheOrbit</span>
     </div>
-    <a href="#hubs" style="pointer-events:auto; color:#aab3c0; font-size:13px; text-decoration:none; letter-spacing:0.02em;">Die drei Hubs</a>
-    <a href="/feld" id="feldLink" style="pointer-events:auto; color:#7fd4ff; font-size:13px; text-decoration:none; letter-spacing:0.02em; margin-left:18px;">Ins echte Feld &rarr;</a>
+    <a href="#hubs" style="pointer-events:auto; color:#aab3c0; font-size:13px; text-decoration:none; letter-spacing:0.02em;">The three hubs</a>
+    <a href="/feld" id="feldLink" style="pointer-events:auto; color:#7fd4ff; font-size:13px; text-decoration:none; letter-spacing:0.02em; margin-left:18px;">Enter the live field &rarr;</a>
   </nav>
 
   <!-- 1. HERO -->
@@ -33,20 +33,20 @@
     <canvas
       id="feldCanvas"
       role="img"
-      aria-label="Ein dunkles Feld aus Lichtpunkten. Tippt man rhythmisch hinein, richten sich die Punkte aneinander aus und eine goldene Brennlinie leuchtet auf; lässt man los, verklingt das Leuchten wieder."
+      aria-label="A dark field of points of light. Tap into it rhythmically and the points align until a golden focal line lights up; let go, and the glow fades again."
       style="position:absolute; inset:0; width:100%; height:100%; cursor:crosshair; touch-action:none;"
     ></canvas>
 
     <div style="position:relative; z-index:2; pointer-events:none; display:flex; flex-direction:column; align-items:center; text-align:center; padding:0 24px; max-width:900px;">
       <h1 style="font-size:clamp(32px,6vw,64px); font-weight:700; letter-spacing:-0.02em; line-height:1.08; margin:0 0 14px;">
-        Wir messen den Tanz,<br/>nicht die T&auml;nzer.
+        We measure the dance,<br/>not the dancers.
       </h1>
       <p style="font-size:clamp(14px,1.6vw,19px); color:#7fd4ff; letter-spacing:0.01em; margin:0 0 46px; font-weight:400;">
-        Find your shared rhythm &mdash; no words needed.
+        Wir messen den Tanz, nicht die T&auml;nzer. &mdash; Find your shared rhythm, no words needed.
       </p>
 
       <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-        <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; font-size:13px; color:#6b7684; letter-spacing:0.04em;">ORDNUNGSPARAMETER</div>
+        <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; font-size:13px; color:#6b7684; letter-spacing:0.04em;">ORDER PARAMETER</div>
         <div style="display:flex; align-items:baseline; gap:6px; font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace;">
           <span style="font-size:15px; color:#aab3c0;">r(t) =</span>
           <span id="rVal" style="font-size:28px; font-weight:600; color:#ffb45e; min-width:74px; text-align:left;">0.000</span>
@@ -59,15 +59,15 @@
 
     <div style="position:absolute; bottom:36px; left:0; right:0; z-index:2; text-align:center; pointer-events:none;">
       <span style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; font-size:12px; letter-spacing:0.05em; color:#6b7684;">
-        klopf an &ndash; irgendein Rhythmus gen&uuml;gt
+        knock &ndash; any rhythm will do
       </span>
     </div>
   </section>
 
   <!-- 2. SO FUNKTIONIERT ES -->
-  <section data-screen-label="So funktioniert es" style="background:#0b0e14; padding:120px 24px; border-top:1px solid rgba(255,255,255,0.06);">
+  <section data-screen-label="How it works" style="background:#0b0e14; padding:120px 24px; border-top:1px solid rgba(255,255,255,0.06);">
     <div style="max-width:1080px; margin:0 auto;">
-      <h2 style="font-size:clamp(24px,3vw,36px); font-weight:700; letter-spacing:-0.01em; margin:0 0 64px; text-align:center;">So funktioniert es</h2>
+      <h2 style="font-size:clamp(24px,3vw,36px); font-weight:700; letter-spacing:-0.01em; margin:0 0 64px; text-align:center;">How it works</h2>
 
       <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:56px;">
 
@@ -78,8 +78,8 @@
             <div style="width:14px; height:14px; border-radius:50%; background:#7fd4ff; box-shadow:0 0 12px 2px rgba(127,212,255,0.7);"></div>
           </div>
           <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; font-size:12px; color:#6b7684; letter-spacing:0.08em;">01</div>
-          <h3 style="font-size:19px; font-weight:600; margin:0;">Klopfen</h3>
-          <p style="font-size:15px; line-height:1.6; color:#aab3c0; margin:0; max-width:280px;">Tippen oder Summen speist das gemeinsame Feld mit Rhythmus &mdash; jeder Strom ein eigener Oszillator.</p>
+          <h3 style="font-size:19px; font-weight:600; margin:0;">Knock</h3>
+          <p style="font-size:15px; line-height:1.6; color:#aab3c0; margin:0; max-width:280px;">Tapping or humming feeds the shared field with rhythm &mdash; every stream its own oscillator.</p>
         </div>
 
         <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:20px;">
@@ -89,15 +89,15 @@
             </div>
           </div>
           <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; font-size:12px; color:#6b7684; letter-spacing:0.08em;">02</div>
-          <h3 style="font-size:19px; font-weight:600; margin:0;">Membran</h3>
-          <p style="font-size:15px; line-height:1.6; color:#aab3c0; margin:0; max-width:280px;">Nach Resonanz &ouml;ffnet sich ein Einlass &mdash; mit einem schmalen Neugier-Leckstrom, der vorab etwas durchl&auml;sst.</p>
+          <h3 style="font-size:19px; font-weight:600; margin:0;">Membrane</h3>
+          <p style="font-size:15px; line-height:1.6; color:#aab3c0; margin:0; max-width:280px;">Admission opens through resonance &mdash; with a narrow curiosity leak that always lets a little through.</p>
         </div>
 
         <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:20px;">
           <div style="width:72px; height:72px; border-radius:50%; background:radial-gradient(circle,rgba(255,180,94,0.9),rgba(255,180,94,0.05) 70%); box-shadow:0 0 34px 6px rgba(255,180,94,0.45);"></div>
           <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; font-size:12px; color:#6b7684; letter-spacing:0.08em;">03</div>
-          <h3 style="font-size:19px; font-weight:600; margin:0;">Leuchten</h3>
-          <p style="font-size:15px; line-height:1.6; color:#aab3c0; margin:0; max-width:280px;">Synchronisieren sich die Str&ouml;me, steigt r(t) &mdash; und die Brennlinie wird sichtbar. Nicht berechnet. Emergiert.</p>
+          <h3 style="font-size:19px; font-weight:600; margin:0;">Glow</h3>
+          <p style="font-size:15px; line-height:1.6; color:#aab3c0; margin:0; max-width:280px;">As the streams synchronize, r(t) rises &mdash; and the focal line becomes visible. Not computed. Emergent.</p>
         </div>
 
       </div>
@@ -107,8 +107,8 @@
   <!-- 3. DREI HUBS -->
   <section id="hubs" data-screen-label="Drei Hubs" style="background:#0e1220; padding:120px 24px; border-top:1px solid rgba(255,255,255,0.06);">
     <div style="max-width:1080px; margin:0 auto;">
-      <h2 style="font-size:clamp(24px,3vw,36px); font-weight:700; letter-spacing:-0.01em; margin:0 0 12px; text-align:center;">Drei Knoten. Ein Feld.</h2>
-      <p style="text-align:center; color:#aab3c0; font-size:16px; max-width:560px; margin:0 auto 64px;">Keine Weltkarte, keine B&uuml;ros &mdash; drei Ausbuchtungen auf derselben Kreis-Schale, verbunden durch das Feld in der Mitte.</p>
+      <h2 style="font-size:clamp(24px,3vw,36px); font-weight:700; letter-spacing:-0.01em; margin:0 0 12px; text-align:center;">Three nodes. One field.</h2>
+      <p style="text-align:center; color:#aab3c0; font-size:16px; max-width:560px; margin:0 auto 64px;">No world map, no offices &mdash; three bulges on the same circular shell, joined by the field at the center.</p>
 
       <svg viewBox="0 0 600 340" style="width:100%; max-width:560px; display:block; margin:0 auto 56px;">
         <circle cx="300" cy="170" r="150" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="1.5"></circle>
@@ -124,18 +124,18 @@
       <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:32px;">
         <div style="border-top:2px solid #ffb45e; padding-top:20px;">
           <h3 style="font-size:19px; font-weight:600; margin:0 0 4px; color:#ffb45e;">Valencia</h3>
-          <div style="font-size:14px; color:#aab3c0; margin-bottom:14px;">Resonanzzentrum</div>
-          <p style="font-size:14px; line-height:1.7; color:#8b94a1; margin:0;">Menschlichkeit &middot; Kultur &middot; Retreats &middot; Salons</p>
+          <div style="font-size:14px; color:#aab3c0; margin-bottom:14px;">Resonance Center</div>
+          <p style="font-size:14px; line-height:1.7; color:#8b94a1; margin:0;">Humanity &middot; Culture &middot; Retreats &middot; Salons</p>
         </div>
         <div style="border-top:2px solid #7fd4ff; padding-top:20px;">
           <h3 style="font-size:19px; font-weight:600; margin:0 0 4px; color:#7fd4ff;">Seattle</h3>
-          <div style="font-size:14px; color:#aab3c0; margin-bottom:14px;">Erkenntnisschmiede</div>
-          <p style="font-size:14px; line-height:1.7; color:#8b94a1; margin:0;">Forschung &middot; KI &middot; Universit&auml;ten &middot; Modelle</p>
+          <div style="font-size:14px; color:#aab3c0; margin-bottom:14px;">Knowledge Forge</div>
+          <p style="font-size:14px; line-height:1.7; color:#8b94a1; margin:0;">Research &middot; AI &middot; Universities &middot; Models</p>
         </div>
         <div style="border-top:2px solid #b79bff; padding-top:20px;">
           <h3 style="font-size:19px; font-weight:600; margin:0 0 4px; color:#b79bff;">Shanghai</h3>
-          <div style="font-size:14px; color:#aab3c0; margin-bottom:14px;">Zukunftslabor</div>
-          <p style="font-size:14px; line-height:1.7; color:#8b94a1; margin:0;">Hardware &middot; Robotik &middot; Skalierung &middot; Produktion</p>
+          <div style="font-size:14px; color:#aab3c0; margin-bottom:14px;">Future Lab</div>
+          <p style="font-size:14px; line-height:1.7; color:#8b94a1; margin:0;">Hardware &middot; Robotics &middot; Scaling &middot; Production</p>
         </div>
       </div>
     </div>
@@ -144,8 +144,8 @@
   <!-- 4. DAS FELD SCHLAEFT NIE -->
   <section data-screen-label="24h Staffellauf" style="background:#0b0e14; padding:120px 24px; border-top:1px solid rgba(255,255,255,0.06);">
     <div style="max-width:900px; margin:0 auto;">
-      <h2 style="font-size:clamp(24px,3vw,36px); font-weight:700; letter-spacing:-0.01em; margin:0 0 12px; text-align:center;">Das Feld schl&auml;ft nie</h2>
-      <p style="text-align:center; color:#aab3c0; font-size:16px; margin:0 auto 56px; max-width:560px;">Ein 24-Stunden-Staffellauf der Koh&auml;renz &mdash; von Europa nach Seattle nach Shanghai und zur&uuml;ck.</p>
+      <h2 style="font-size:clamp(24px,3vw,36px); font-weight:700; letter-spacing:-0.01em; margin:0 0 12px; text-align:center;">The field never sleeps</h2>
+      <p style="text-align:center; color:#aab3c0; font-size:16px; margin:0 auto 56px; max-width:560px;">A 24-hour relay of coherence &mdash; from Europe to Seattle to Shanghai and back.</p>
 
       <div style="position:relative; height:66px; border-radius:6px; overflow:hidden;">
         <div style="position:relative; height:18px; margin-bottom:3px; background:rgba(255,255,255,0.04); border-radius:3px; overflow:hidden;">
@@ -175,11 +175,11 @@
   </section>
 
   <!-- 5. START IM DISSENS -->
-  <section data-screen-label="Start im Dissens" style="background:#0e1220; padding:120px 24px; border-top:1px solid rgba(255,255,255,0.06);">
+  <section data-screen-label="Start in dissent" style="background:#0e1220; padding:120px 24px; border-top:1px solid rgba(255,255,255,0.06);">
     <div style="max-width:760px; margin:0 auto; text-align:center;">
-      <h2 style="font-size:clamp(24px,3vw,36px); font-weight:700; letter-spacing:-0.01em; margin:0 0 24px;">Start im Dissens</h2>
+      <h2 style="font-size:clamp(24px,3vw,36px); font-weight:700; letter-spacing:-0.01em; margin:0 0 24px;">Start in dissent</h2>
       <p style="font-size:16px; line-height:1.75; color:#aab3c0; margin:0 0 48px;">
-        Jede Gruppe beginnt gegenphasig &mdash; dunkel, gespannt, ohne Ordnung. Ohne Absprache, ohne Anleitung findet sie in den gemeinsamen Takt. Was bleibt: die geteilte r(t)-Kurve dieses einen Abends.
+        Every group begins in antiphase &mdash; dark, tense, without order. With no agreement and no instructions, it finds its shared beat. What remains: the shared r(t) curve of that one evening.
       </p>
       <svg viewBox="0 0 400 110" style="width:100%; max-width:420px; display:block; margin:0 auto;">
         <polyline points="0,86 18,64 36,90 54,58 72,92 90,52 108,74 126,42 144,64 162,32 180,48 198,22 216,34 234,16 252,24 270,12 288,16 306,9 324,11 342,7 360,8 378,6 400,6"
@@ -187,7 +187,7 @@
           id="rCurve" style="stroke-dasharray:900; stroke-dashoffset:900; transition:stroke-dashoffset 2.2s ease-out;"></polyline>
       </svg>
       <div style="font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,monospace; font-size:12px; color:#6b7684; margin-top:12px; letter-spacing:0.04em;">
-        geteilte r(t)-Kurve &mdash; ein Andenken
+        the shared r(t) curve &mdash; a keepsake
       </div>
     </div>
   </section>
@@ -197,23 +197,23 @@
     <div style="max-width:640px; margin:0 auto; text-align:center;">
       <h2 style="font-size:clamp(24px,3vw,34px); font-weight:700; letter-spacing:-0.01em; margin:0 0 20px;">Open Source. Open Field.</h2>
       <p style="font-size:15px; line-height:1.7; color:#aab3c0; margin:0 0 40px;">
-        Der Code und die Betriebsanleitung liegen offen. Wer will, baut das Feld nach &mdash; oder kommt vorbei.
+        The code and the operating manual are open. Build the field yourself &mdash; or come by.
       </p>
 
       <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-bottom:56px;">
         <a href="https://github.com/AETHON/the_orbit" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:8px; padding:13px 24px; border-radius:8px; background:#f2f5f9; color:#0b0e14; text-decoration:none; font-size:14px; font-weight:600;">
-          Zum Repository ↗
+          View the repository ↗
         </a>
-        <a href="mailto:salon@theorbit.example?subject=Einladung%20Salon%20Valencia" style="display:inline-flex; align-items:center; gap:8px; padding:13px 24px; border-radius:8px; border:1px solid rgba(255,255,255,0.18); color:#f2f5f9; text-decoration:none; font-size:14px; font-weight:600;">
-          Einladung anfragen ↗
+        <a href="mailto:salon@theorbit.example?subject=Salon%20Valencia%20Invitation" style="display:inline-flex; align-items:center; gap:8px; padding:13px 24px; border-radius:8px; border:1px solid rgba(255,255,255,0.18); color:#f2f5f9; text-decoration:none; font-size:14px; font-weight:600;">
+          Request an invitation ↗
         </a>
       </div>
 
-      <div style="font-size:13px; color:#6b7684; margin-bottom:6px;">Betriebsanleitung im Repo.</div>
-      <div style="font-size:13px; color:#6b7684; margin-bottom:40px;">Erster Salon in Valencia &mdash; Einladung auf Anfrage.</div>
+      <div style="font-size:13px; color:#6b7684; margin-bottom:6px;">Operating manual in the repo.</div>
+      <div style="font-size:13px; color:#6b7684; margin-bottom:40px;">First salon in Valencia &mdash; invitation on request.</div>
 
       <div style="font-size:12px; color:#4b5462; border-top:1px solid rgba(255,255,255,0.06); padding-top:24px;">
-        Keine Cookies. Kein Tracking. Kein Konto n&ouml;tig. &mdash; TheOrbit
+        No cookies. No tracking. No account needed. &mdash; TheOrbit
       </div>
     </div>
   </section>
@@ -390,7 +390,7 @@
     if (!utcClock || !nowMarker) return;
     const now = new Date();
     const h = now.getUTCHours() + now.getUTCMinutes() / 60;
-    utcClock.textContent = now.toUTCString().slice(17, 22) + ' UTC \u2014 gerade jetzt aktiv';
+    utcClock.textContent = now.toUTCString().slice(17, 22) + ' UTC \u2014 active right now';
     nowMarker.style.left = (h / 24 * 100) + '%';
   }
   setInterval(updateClock, 30000);
