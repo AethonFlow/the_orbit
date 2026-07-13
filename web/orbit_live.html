@@ -81,6 +81,12 @@
     <label>Häuser-Atmung <b id="hsVal">0.15</b></label>
     <input type="range" id="hs" min="0" max="0.3" step="0.01" value="0.15">
 
+    <h2>Session</h2>
+    <div style="display:flex; gap:8px;">
+      <button id="dissentBtn" title="Gegenphasen-Start: dunkel, gespannt — findet heraus">Start im Dissens</button>
+      <button id="memoryBtn" title="Die r(t)-Kurve dieser Session als Bild">Orbit-Memory &darr;</button>
+    </div>
+
     <div class="hint">
       <b>Tippen:</b> dein Tempo wählt das Haus (≈1 Anschlag/s → Haus 1,
       ≈4/s → Haus 4), Gleichmäßigkeit = Stärke.<br>
@@ -115,6 +121,7 @@ function connect() {
     waves = m.waves; houses = m.houses;
     R = m;
     rHist.push(m.r); if (rHist.length > 200) rHist.shift();
+    sessionHist.push(m.r); if (sessionHist.length > 36000) sessionHist.shift();
     bHist.push(m.brightness); if (bHist.length > 200) bHist.shift();
   };
 }
@@ -157,6 +164,37 @@ micBtn.onclick = async () => {
   } catch (err) {
     statusEl.textContent = 'Mikrofon verweigert: ' + err.name;
   }
+};
+
+// ============ Session: Start im Dissens & Orbit-Memory ============
+const sessionHist = [];
+document.getElementById('dissentBtn').onclick = () => {
+  send({ type: 'dissent' });
+  sessionHist.length = 0;
+};
+document.getElementById('memoryBtn').onclick = () => {
+  const h = sessionHist.length > 1 ? sessionHist : rHist;
+  if (h.length < 2) return;
+  const W = 800, H = 300, P = 40;
+  const step = Math.max(1, Math.floor(h.length / 1500));
+  const pts = [];
+  for (let i = 0; i < h.length; i += step) {
+    const x = P + (i / (h.length - 1)) * (W - 2 * P);
+    const y = H - P - Math.min(1, h[i]) * (H - 2 * P);
+    pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+  }
+  const when = new Date().toISOString().slice(0, 16).replace('T', ' ');
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '">' +
+    '<rect width="100%" height="100%" fill="#0b0e14"/>' +
+    '<line x1="' + P + '" y1="' + (H - P) + '" x2="' + (W - P) + '" y2="' + (H - P) + '" stroke="#232b3d"/>' +
+    '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#ffb45e" stroke-width="2"/>' +
+    '<text x="' + P + '" y="26" fill="#cfd8e3" font-family="monospace" font-size="14">TheOrbit \u00b7 Orbit-Memory \u00b7 r(t) \u00b7 ' + when + ' UTC</text>' +
+    '<text x="' + P + '" y="' + (H - 14) + '" fill="#7a8699" font-family="monospace" font-size="11">Wir messen den Tanz, nicht die T\u00e4nzer.</text>' +
+    '</svg>';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  a.download = 'orbit-memory-' + Date.now() + '.svg';
+  a.click();
 };
 
 // ============ Häuser-Atmung ============

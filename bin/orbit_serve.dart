@@ -25,6 +25,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:ri_orbit/ri_orbit.dart';
 
@@ -88,6 +89,27 @@ void main() async {
                 amplitude:
                     (c.amplitude * audioGain).clamp(0.0, maxAmplitude)))
             .toList();
+      case 'dissent':
+        // Session-Ritual "Start im Dissens": exakte Gegenphase ist ein
+        // instabiles Gleichgewicht (r = 0, dunkel, gespannt). Das ist
+        // eine ANFANGSBEDINGUNG, kein Regler - jeder echte Impuls der
+        // Gruppe bricht die Symmetrie, und die Kopplung uebernimmt.
+        final seeded = <Resonon>[];
+        for (final f in [2, 3]) {
+          for (int i = 0; i < 4; i++) {
+            seeded.add(Resonon(
+              id: idSeq++,
+              timestamp: now,
+              frequency: f,
+              amplitude: 0.8,
+              phase: i.isEven ? 0.0 : math.pi,
+              source: ResononSource.clock,
+            ));
+          }
+        }
+        state = state.withCluster(ResononCluster(waves: seeded));
+        pending = [];
+        return;
       case 'config':
         houseScale = ((msg['houseScale'] as num?)?.toDouble() ?? houseScale)
             .clamp(0.0, 0.3);
