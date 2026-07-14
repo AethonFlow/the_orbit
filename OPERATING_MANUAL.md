@@ -33,7 +33,7 @@ language). Please read them before touching the core.
 ## 2. Installation
 
 ```powershell
-git clone <REPO-URL>
+git clone https://github.com/AethonFlow/the_orbit.git
 cd the_orbit
 dart pub get
 dart test        # must report "All tests passed!"
